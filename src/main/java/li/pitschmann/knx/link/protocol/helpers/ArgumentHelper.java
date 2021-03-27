@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package li.pitschmann.knx.link;
+package li.pitschmann.knx.link.protocol.helpers;
 
 import li.pitschmann.knx.core.annotations.Nullable;
 
@@ -56,9 +56,8 @@ import java.util.List;
  *      Index 0: Escaped Character Also Works!
  * }</pre>
  */
-public final class ArgumentParser {
-
-    private ArgumentParser() {
+public final class ArgumentHelper {
+    private ArgumentHelper() {
         throw new AssertionError("Do not touch me!");
     }
 

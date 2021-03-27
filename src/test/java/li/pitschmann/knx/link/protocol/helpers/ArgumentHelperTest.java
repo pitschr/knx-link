@@ -15,8 +15,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package li.pitschmann.knx.link;
+package li.pitschmann.knx.link.protocol.helpers;
 
+import li.pitschmann.knx.link.protocol.helpers.ArgumentHelper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -25,26 +26,26 @@ import java.nio.charset.StandardCharsets;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Test for {@link ArgumentParser}
+ * Test for {@link ArgumentHelper}
  */
-class ArgumentParserTest {
+class ArgumentHelperTest {
 
     @Test
     @DisplayName("Null bytes")
     void test_NullBytes() {
-        assertThat(ArgumentParser.toList(null)).isEmpty();
+        assertThat(ArgumentHelper.toList(null)).isEmpty();
     }
 
     @Test
     @DisplayName("Empty bytes")
     void test_EmptyBytes() {
-        assertThat(ArgumentParser.toList(new byte[0])).isEmpty();
+        assertThat(ArgumentHelper.toList(new byte[0])).isEmpty();
     }
 
     @Test
     @DisplayName("One Argument: ASCII")
     void test_OneArg_Ascii() {
-        assertThat(ArgumentParser.toList(
+        assertThat(ArgumentHelper.toList(
                 new byte[]{
                         0x41, 0x42, 0x43, /*ABC*/
                         0x31, 0x32, 0x33  /*123*/
@@ -55,7 +56,7 @@ class ArgumentParserTest {
     @Test
     @DisplayName("One Argument: ISO-8859-1")
     void test_OneArg_ISO_8859_1() {
-        assertThat(ArgumentParser.toList(
+        assertThat(ArgumentHelper.toList(
                 new byte[]{
                         (byte) 0xC3, (byte) 0xA4, (byte) 0xC3, (byte) 0xB6, (byte) 0xC3, (byte) 0xBC, /*äöü*/
                         (byte) 0xC3, (byte) 0x84, (byte) 0xC3, (byte) 0x96, (byte) 0xC3, (byte) 0x9C  /*ÄÖÜ*/
@@ -66,7 +67,7 @@ class ArgumentParserTest {
     @Test
     @DisplayName("One Argument: Russian")
     void test_OneArg_Russian() {
-        assertThat(ArgumentParser.toList(
+        assertThat(ArgumentHelper.toList(
                 new byte[]{
                         (byte) 0xD0, (byte) 0x9B /*Л*/,
                         (byte) 0xD0, (byte) 0xBE /*о*/,
@@ -80,7 +81,7 @@ class ArgumentParserTest {
     @Test
     @DisplayName("One Argument: Chinese")
     void test_OneArg_Chinese() {
-        assertThat(ArgumentParser.toList(
+        assertThat(ArgumentHelper.toList(
                 new byte[]{
                         (byte) 0xE5, (byte) 0xBF, (byte) 0x85 /*必*/,
                         (byte) 0xE8, (byte) 0xBB, (byte) 0xBD /*軽*/,
@@ -94,7 +95,7 @@ class ArgumentParserTest {
     @DisplayName("Arguments without quotes")
     void test_Args_WithoutQuotes() {
         // ABC DEF GHI
-        assertThat(ArgumentParser.toList(toUTF8Bytes(
+        assertThat(ArgumentHelper.toList(toUTF8Bytes(
                 "ABC DEF GHI"
         ))).containsExactly("ABC", "DEF", "GHI");
     }
@@ -103,7 +104,7 @@ class ArgumentParserTest {
     @DisplayName("Arguments within quotes only")
     void test_Args_WithQuotes() {
         // "ABC DEF" "GHI JKL" "MNO PQR"
-        assertThat(ArgumentParser.toList(toUTF8Bytes(
+        assertThat(ArgumentHelper.toList(toUTF8Bytes(
                 "\"ABC DEF\" \"GHI JKL\" \"MNO PQR\""
         ))).containsExactly("ABC DEF", "GHI JKL", "MNO PQR");
     }
@@ -112,12 +113,12 @@ class ArgumentParserTest {
     @DisplayName("Arguments with and without quotes")
     void test_Args_WithAndWithoutQuotes() {
         // ABC DEF "GHI JKL" MNO PQR
-        assertThat(ArgumentParser.toList(toUTF8Bytes(
+        assertThat(ArgumentHelper.toList(toUTF8Bytes(
                 "ABC DEF \"GHI JKL\" MNO PQR"
         ))).containsExactly("ABC", "DEF", "GHI JKL", "MNO", "PQR");
 
         // "ABC DEF" GHI "JKL MNO"
-        assertThat(ArgumentParser.toList(toUTF8Bytes(
+        assertThat(ArgumentHelper.toList(toUTF8Bytes(
                 "\"ABC DEF\" GHI \"JKL MNO\""
         ))).containsExactly("ABC DEF", "GHI", "JKL MNO");
     }
@@ -125,7 +126,7 @@ class ArgumentParserTest {
     @Test
     @DisplayName("Arguments separated by different whitespaces")
     void test_DifferentWhitespaces() {
-        assertThat(ArgumentParser.toList(toUTF8Bytes(
+        assertThat(ArgumentHelper.toList(toUTF8Bytes(
                 "ABC abc\t123\r456"
         ))).containsExactly("ABC", "abc", "123", "456");
     }
@@ -134,7 +135,7 @@ class ArgumentParserTest {
     @DisplayName("Arguments with repeated whitespaces without quotes")
     void test_RepeatedWhitespaces_NoQuotes() {
         // ABC    abc\t \t \t123 \t\r456
-        assertThat(ArgumentParser.toList(toUTF8Bytes(
+        assertThat(ArgumentHelper.toList(toUTF8Bytes(
                 "ABC    abc\t \t \t123 \t\r456"
         ))).containsExactly("ABC", "abc", "123", "456");
     }
@@ -143,7 +144,7 @@ class ArgumentParserTest {
     @DisplayName("Arguments with multiple whitespaces within quotes")
     void test_RepeatedWhitespaces_WithinQuotes() {
         // ABC "abc def  ghi" 123 "456    789"
-        assertThat(ArgumentParser.toList(toUTF8Bytes(
+        assertThat(ArgumentHelper.toList(toUTF8Bytes(
                 "ABC \"abc def  ghi\" 123 \"456    789\""
         ))).containsExactly("ABC", "abc def  ghi", "123", "456    789");
     }
@@ -152,37 +153,37 @@ class ArgumentParserTest {
     @DisplayName("Arguments with escape characters without quotes")
     void test_EscapeCharacters_NoQuotes() {
         // \
-        assertThat(ArgumentParser.toList(toUTF8Bytes(
+        assertThat(ArgumentHelper.toList(toUTF8Bytes(
                 "\\ "
         ))).containsExactly(" ");
 
         // \\
-        assertThat(ArgumentParser.toList(toUTF8Bytes(
+        assertThat(ArgumentHelper.toList(toUTF8Bytes(
                 "\\\\"
         ))).containsExactly("\\");
 
         // ABC\ DEF
-        assertThat(ArgumentParser.toList(toUTF8Bytes(
+        assertThat(ArgumentHelper.toList(toUTF8Bytes(
                 "ABC\\ DEF"
         ))).containsExactly("ABC DEF");
 
         // ABC\ \ DEF
-        assertThat(ArgumentParser.toList(toUTF8Bytes(
+        assertThat(ArgumentHelper.toList(toUTF8Bytes(
                 "ABC\\ \\ DEF"
         ))).containsExactly("ABC  DEF");
 
         // ABC\\ DEF
-        assertThat(ArgumentParser.toList(toUTF8Bytes(
+        assertThat(ArgumentHelper.toList(toUTF8Bytes(
                 "ABC\\\\ DEF"
         ))).containsExactly("ABC\\", "DEF");
 
         // ABC\\\ DEF
-        assertThat(ArgumentParser.toList(toUTF8Bytes(
+        assertThat(ArgumentHelper.toList(toUTF8Bytes(
                 "ABC\\\\\\ DEF"
         ))).containsExactly("ABC\\ DEF");
 
         // ABC\\\\ DEF
-        assertThat(ArgumentParser.toList(toUTF8Bytes(
+        assertThat(ArgumentHelper.toList(toUTF8Bytes(
                 "ABC\\\\\\\\ DEF"
         ))).containsExactly("ABC\\\\", "DEF");
     }
@@ -191,17 +192,17 @@ class ArgumentParserTest {
     @DisplayName("Arguments with escape characters within quotes")
     void test_EscapeCharacters_WithinQuotes() {
         // "\ "
-        assertThat(ArgumentParser.toList(toUTF8Bytes(
+        assertThat(ArgumentHelper.toList(toUTF8Bytes(
                 "\"\\ \""
         ))).containsExactly("\\ ");
 
         // "ABC\ DEF"
-        assertThat(ArgumentParser.toList(toUTF8Bytes(
+        assertThat(ArgumentHelper.toList(toUTF8Bytes(
                 "\"ABC\\ DEF\""
         ))).containsExactly("ABC\\ DEF");
 
         // "ABC\ \ DEF"
-        assertThat(ArgumentParser.toList(toUTF8Bytes(
+        assertThat(ArgumentHelper.toList(toUTF8Bytes(
                 "\"ABC\\ \\ DEF\""
         ))).containsExactly("ABC\\ \\ DEF");
     }
@@ -210,32 +211,32 @@ class ArgumentParserTest {
     @DisplayName("Arguments with quote characters without quotes")
     void test_QuoteCharacters_NoQuotes() {
         // \"
-        assertThat(ArgumentParser.toList(toUTF8Bytes(
+        assertThat(ArgumentHelper.toList(toUTF8Bytes(
                 "\\\""
         ))).containsExactly("\"");
 
         // \"ABC
-        assertThat(ArgumentParser.toList(toUTF8Bytes(
+        assertThat(ArgumentHelper.toList(toUTF8Bytes(
                 "\\\"ABC"
         ))).containsExactly("\"ABC");
 
         // ABC\"
-        assertThat(ArgumentParser.toList(toUTF8Bytes(
+        assertThat(ArgumentHelper.toList(toUTF8Bytes(
                 "ABC\\\""
         ))).containsExactly("ABC\"");
 
         // ABC\"DEF
-        assertThat(ArgumentParser.toList(toUTF8Bytes(
+        assertThat(ArgumentHelper.toList(toUTF8Bytes(
                 "ABC\\\"DEF"
         ))).containsExactly("ABC\"DEF");
 
         // ABC\"\"DEF
-        assertThat(ArgumentParser.toList(toUTF8Bytes(
+        assertThat(ArgumentHelper.toList(toUTF8Bytes(
                 "ABC\\\"\\\"DEF"
         ))).containsExactly("ABC\"\"DEF");
 
         // ABC\"\"\"DEF
-        assertThat(ArgumentParser.toList(toUTF8Bytes(
+        assertThat(ArgumentHelper.toList(toUTF8Bytes(
                 "ABC\\\"\\\"\\\"DEF"
         ))).containsExactly("ABC\"\"\"DEF");
     }
@@ -244,32 +245,32 @@ class ArgumentParserTest {
     @DisplayName("Arguments with quote characters within quotes")
     void test_QuoteCharacters_WithinQuotes() {
         // "\""
-        assertThat(ArgumentParser.toList(toUTF8Bytes(
+        assertThat(ArgumentHelper.toList(toUTF8Bytes(
                 "\"\\\"\""
         ))).containsExactly("\"");
 
         // "\"ABC"
-        assertThat(ArgumentParser.toList(toUTF8Bytes(
+        assertThat(ArgumentHelper.toList(toUTF8Bytes(
                 "\"\\\"ABC\""
         ))).containsExactly("\"ABC");
 
         // "ABC\""
-        assertThat(ArgumentParser.toList(toUTF8Bytes(
+        assertThat(ArgumentHelper.toList(toUTF8Bytes(
                 "\"ABC\\\"\""
         ))).containsExactly("ABC\"");
 
         // "ABC\"DEF"
-        assertThat(ArgumentParser.toList(toUTF8Bytes(
+        assertThat(ArgumentHelper.toList(toUTF8Bytes(
                 "\"ABC\\\"DEF\""
         ))).containsExactly("ABC\"DEF");
 
         // "ABC\"\"DEF"
-        assertThat(ArgumentParser.toList(toUTF8Bytes(
+        assertThat(ArgumentHelper.toList(toUTF8Bytes(
                 "\"ABC\\\"\\\"DEF\""
         ))).containsExactly("ABC\"\"DEF");
 
         // "ABC\"\"\"DEF"
-        assertThat(ArgumentParser.toList(toUTF8Bytes(
+        assertThat(ArgumentHelper.toList(toUTF8Bytes(
                 "\"ABC\\\"\\\"\\\"DEF\""
         ))).containsExactly("ABC\"\"\"DEF");
     }

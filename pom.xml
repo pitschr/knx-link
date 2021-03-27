@@ -65,9 +65,9 @@
         <version.maven-release-plugin>2.5.3</version.maven-release-plugin> <!-- Apache 2.0 -->
         <version.maven-surefire-plugin>2.22.2</version.maven-surefire-plugin> <!-- Apache 2.0 -->
         <!-- Dependency Versions and Licenses -->
-        <version.knx-core>0.3.0</version.knx-core> <!-- GPL 3.0 -->
-        <version.knx-core-plugin-audit>0.3.0</version.knx-core-plugin-audit> <!-- GPL 3.0 -->
-        <version.knx-core-plugin-statistic>0.3.0</version.knx-core-plugin-statistic> <!-- GPL 3.0 -->
+        <version.knx-core>0.4.1-SNAPSHOT</version.knx-core> <!-- GPL 3.0 -->
+        <version.knx-core-plugin-audit>0.4.0</version.knx-core-plugin-audit> <!-- GPL 3.0 -->
+        <version.knx-core-plugin-statistic>0.4.0</version.knx-core-plugin-statistic> <!-- GPL 3.0 -->
         <version.logback-classic>1.2.3</version.logback-classic> <!-- EPL 1.0, LGPL 2.1 -->
         <version.assertj-core>3.18.1</version.assertj-core> <!-- Apache 2.0 -->
         <version.junit-jupiter-engine>5.7.0</version.junit-jupiter-engine> <!-- EPL 2.0 -->
