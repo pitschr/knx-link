@@ -32,26 +32,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Test for {@link ProtocolHelper}
  */
 class ProtocolHelperTest {
-//
-//    @Test
-//    @DisplayName("#getVersion(byte[])")
-//    void test_getVersion() {
-//        var protocol = new ProtocolReader();
-//
-//        // index: 0
-//        assertThat(Protocol.getVersion(new byte[]{0x01})).isEqualTo(1);
-//        assertThat(protocol.getVersion(new byte[]{0x03})).isEqualTo(3);
-//    }
-//
-//    @Test
-//    @DisplayName("#getAction(byte[])")
-//    void test_getAction() {
-//        var protocol = new ProtocolReader();
-//
-//        // index: 1
-//        assertThat(protocol.getAction(new byte[]{0x00, 0x00})).isSameAs(Action.READ_REQUEST);
-//        assertThat(protocol.getAction(new byte[]{0x00, 0x01})).isSameAs(Action.WRITE_REQUEST);
-//    }
 
     @Test
     @DisplayName("#parseGroupAddress(byte[])")

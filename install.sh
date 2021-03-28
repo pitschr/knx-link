@@ -1,5 +1,7 @@
 #!/bin/bash
 
+KNX_LINK_SERVER_PORT=10222
+
 ##
 ## Minimum Requirement Check
 ##
@@ -11,35 +13,32 @@ echo " 2) 'curl' to download the latest file                              "
 echo " 3) 'systemctl' to run KNX as a daemon service                      "
 echo "********************************************************************"
 
-javaCmd=$(type -p java)
 # Check if 'java' is available
-if [[ -z "$javaCmd" ]]; then
+if [[ -z "$(type -p java)" ]]; then
 	echo "[ERROR] Java not installed? Please install Java 11 or above."
 	exit 1
 else
   # Check if 'java' is version 11 or above
-  javaCmdVersion=$(javap -verbose java.lang.Void | fgrep "major version" | cut -d':' -f2 | xargs)
-  if [[ $javaCmdVersion -lt 55 ]]; then
-    echo "[ERROR] You have Java major version '$javaCmdVersion', required is Java 11 (major version 55 and above)."
+  javaVersion=$(javap -verbose java.lang.Void | fgrep "major version" | cut -d':' -f2 | xargs)
+  if [[ $javaVersion -lt 55 ]]; then
+    echo "[ERROR] You have Java major version '$javaVersion', required is Java 11 (major version 55 and above)."
     exit 1
   fi
 fi
 
 # Check if 'curl' is available, this is required to download the JAR file from GitHub
-curlCmd=$(type -p curl)
-if [[ -z "$curlCmd" ]]; then
-  echo "[ERROR] Curl not installed? Please install 'curl'"
+if [[ -z "$(type -p curl)" ]]; then
+  echo "[ERROR] 'curl' not installed? Please install 'curl'"
   exit 1
 fi
 
 # Check if 'systemctl' is available, this is required to install the service
-systemctlCmd=$(type -p systemctl)
-if [[ -z "$systemctlCmd" ]]; then
-  echo "[ERROR] Systemd not installed? Probably your linux version is outdated or running in a container?"
+if [[ -z "$(type -p systemctl)" ]]; then
+  echo "[ERROR] 'systemctl' not installed? Probably your linux version is outdated or running in a container?"
   exit 1
 fi
 
-# Figure out the latest file
+# Select the latest file
 DOWNLOAD_FILE="$(curl -s https://api.github.com/repos/pitschr/knx-core/releases/latest | fgrep "tag_name" | cut -d\" -f4).jar"
 if [[ -z "$DOWNLOAD_FILE" ]]; then
   echo "[ERROR] Could not fetch the latest file from GitHub. Please contact the maintainer."
@@ -79,7 +78,7 @@ echo "DONE"
 ## Install 'knx' system service
 ##
 SYSTEMD_SERVICE_KNX=/etc/systemd/system/knx.service
-if [[ -f $SYSTEMD_SERVICE_KNX ]]; then
+if [[ -f "$SYSTEMD_SERVICE_KNX" ]]; then
 	read -p "Systemd 'knx.service' found. Overwrite now? [Yn]: " yn
 	if [[ $yn != [Yy]* ]]; then
 		echo "You said '$yn'. Aborted."
@@ -103,7 +102,7 @@ Restart=always
 RestartSec=3
 User=knx
 WorkingDirectory=/usr/local/bin
-ExecStart=java -version
+ExecStart=sleep 10
 
 [Install]
 WantedBy=multi-user.target
@@ -127,6 +126,8 @@ if [[ ! -z "$firewallCmd" ]]; then
     echo
     echo " At the end the firewall daemon will be reloaded to make the new"
     echo " service effective."
+    echo
+    echo " If you want to skip the creating new firewall, then choose 'no'."
     echo "********************************************************************"
     read -p "Shall I proceed with creating a new firewall service? [Yn]: " yn
     if [[ $yn == [Yy]* ]]; then
@@ -158,6 +159,8 @@ if [[ ! -z "$firewallCmd" ]]; then
     echo
     echo " At the end the firewall daemon will be reloaded to make the new"
     echo " service effective."
+    echo
+    echo " If you want to skip the updating the firewall, then choose 'no'."
     echo "********************************************************************"
     read -p "Shall I proceed with updating the existing firewall service? [Yn]: " yn
     if [[ $yn == [Yy]* ]]; then
@@ -198,16 +201,27 @@ if [[ $(echo "$SYSTEMD_STATUS" | fgrep "Active: active" | wc -l) -eq 0 ]]; then
   exit 5
 fi
 echo "DONE"
-
-CHECK_PORT=10222
+echo
+echo "INSTALLATION COMPLETED!"
+echo
+echo "********************************************************************"
+echo "                      POST INSTALLATION CHECKS                      "
+echo "********************************************************************"
 echo -n "Checking port for 'knx.service' ... "
-if ! ncat -vz localhost $CHECK_PORT &> /dev/null; then
-  echo "[ERROR] Port seems not be open? Please check if knx daemon is listening on port: $CHECK_PORT"
-  exit 6
+ncatCmd=$(type -p ncat)
+ncCmd=$(type -p nc)
+if [[ -n "$ncatCmd" || -n "$ncCmd" ]]; then  # 'ncat' is available
+  PORT_CHECK=1
+  if [[ -n "$ncatCmd" ]]; then
+    PORT_CHECK=$(ncat -z "localhost" $KNX_LINK_SERVER_PORT; echo $?)
+  else
+    PORT_CHECK=$(nc "localhost" $KNX_LINK_SERVER_PORT </dev/null > /dev/null 2>&1; echo $?)
+  fi
+  if [[ $PORT_CHECK -ne 0 ]]; then
+    echo "[ERROR] Port seems not be open? Please check if knx daemon is listening on port: $KNX_LINK_SERVER_PORT"
+    exit 6
+  fi
+  echo "DONE"
+else
+  echo "SKIPPED (no 'ncat' nor 'nc' command found)"
 fi
-echo "DONE"
-echo
-echo "********************************************************************"
-echo "                        INSTALLATION COMPLETED"
-echo "********************************************************************"
-echo
