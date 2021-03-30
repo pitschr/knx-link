@@ -19,18 +19,18 @@ package li.pitschmann.knx.link;
 
 import li.pitschmann.knx.core.address.GroupAddress;
 import li.pitschmann.knx.core.communication.KnxClient;
+import li.pitschmann.knx.core.communication.KnxStatusPool;
 import li.pitschmann.knx.core.datapoint.DPT1;
+import li.pitschmann.knx.core.datapoint.DPT11;
 import li.pitschmann.knx.core.datapoint.DPT14;
 import li.pitschmann.knx.core.datapoint.DPT19;
 import li.pitschmann.knx.core.datapoint.DPT2;
 import li.pitschmann.knx.core.datapoint.DPT28;
+import li.pitschmann.knx.core.datapoint.DataPointType;
 import li.pitschmann.knx.core.datapoint.value.DPT19Value;
 import li.pitschmann.knx.core.datapoint.value.DataPointValue;
-import li.pitschmann.knx.core.utils.Sleeper;
 import li.pitschmann.knx.link.test.SocketClient;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -39,13 +39,12 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -56,33 +55,59 @@ import static org.mockito.Mockito.when;
 class ServerTest {
     private SocketClient client;
     private KnxClient knxClientMock;
-    private ExecutorService executorService;
+    private Server server;
 
     @BeforeEach
     void setUp() {
         knxClientMock = mock(KnxClient.class);
         when(knxClientMock.readRequest(any(GroupAddress.class))).thenReturn(CompletableFuture.completedFuture(true));
         when(knxClientMock.writeRequest(any(GroupAddress.class), any(DataPointValue.class))).thenReturn(CompletableFuture.completedFuture(true));
-        executorService = Executors.newSingleThreadExecutor();
-        executorService.submit(new Server(knxClientMock));
-        client = SocketClient.createStarted(10222);
+        when(knxClientMock.getStatusPool()).thenReturn(mock(KnxStatusPool.class));
+        server = Server.createStarted(knxClientMock);
+        client = spy(SocketClient.createStarted(10222));
     }
 
     @AfterEach
     void tearDown() {
         client.close();
-        executorService.shutdownNow();
+        server.close();
     }
 
     @Test
-    @DisplayName("Read Request")
-    void test_Server_ReadRequest() {
+    @DisplayName("Read Request with DPT 1.004 - Ramp")
+    void test_Server_ReadRequest_DPT1() {
+        when(knxClientMock.getStatusPool().getValue(
+                any(GroupAddress.class),
+                any(DataPointType.class)))
+                .thenReturn(DPT1.RAMP.of(true));
+
         client.readRequest("8/3/250", "1.004");
 
         verify(knxClientMock, timeout(1000))
-                .readRequest(
-                        eq(GroupAddress.of(8,3,250))
-                );
+                .readRequest(any(GroupAddress.class));
+        verify(knxClientMock.getStatusPool(), timeout(1000))
+                .getValue(any(GroupAddress.class), any(DataPointType.class));
+
+        assertThat(client.getReceivedStrings()).hasSize(2);
+        assertThat(client.getReceivedStrings().get(0)).isEqualTo("SUCCESS", "Ramp");
+    }
+
+    @Test
+    @DisplayName("Read Request with DPT 11.001 - Date")
+    void test_Server_ReadRequest_DPT11() {
+        when(knxClientMock.getStatusPool().getValue(
+                any(GroupAddress.class),
+                any(DataPointType.class)))
+                .thenReturn(DPT11.DATE.of(LocalDate.of(2021, 3, 28)));
+
+        client.readRequest("1/2/3", "11.001");
+
+        verify(knxClientMock, timeout(1000))
+                .readRequest(any(GroupAddress.class));
+        verify(knxClientMock.getStatusPool(), timeout(1000))
+                .getValue(any(GroupAddress.class), any(DataPointType.class));
+
+        assertThat(client.getReceivedStrings()).containsExactly("SUCCESS", "2021-03-28");
     }
 
     @Test
@@ -133,7 +158,7 @@ class ServerTest {
                                 DayOfWeek.SUNDAY,
                                 LocalDate.of(2021, 3, 25),
                                 LocalTime.of(21, 4, 51),
-                                new DPT19Value.Flags(new byte[]{ 0x03, (byte) 0x80})
+                                new DPT19Value.Flags(new byte[]{0x03, (byte) 0x80})
                         ))
                 );
     }
@@ -145,7 +170,7 @@ class ServerTest {
 
         verify(knxClientMock, timeout(1000))
                 .writeRequest(
-                        eq(GroupAddress.of(1,2,3)),
+                        eq(GroupAddress.of(1, 2, 3)),
                         eq(DPT28.UTF_8.of("Hällö 読継 食う न्त्राल яуи δολ 123"))
                 );
     }

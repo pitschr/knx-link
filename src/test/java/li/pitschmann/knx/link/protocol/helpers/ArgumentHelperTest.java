@@ -17,7 +17,6 @@
 
 package li.pitschmann.knx.link.protocol.helpers;
 
-import li.pitschmann.knx.link.protocol.helpers.ArgumentHelper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

@@ -19,11 +19,14 @@ package li.pitschmann.knx.link;
 
 import li.pitschmann.knx.core.communication.DefaultKnxClient;
 import li.pitschmann.knx.core.utils.Sleeper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The main class to start the KNX Link Server
  */
 public class Main {
+    private static final Logger LOG = LoggerFactory.getLogger(Main.class);
 
     public static void main(String[] args) {
 
@@ -38,11 +41,12 @@ public class Main {
         // 3: Prepare Config for KNX Client based on ServerConfig
         // 4: Start KNX Client, Accepting the Client connections
 
-        try (final var knxClient = DefaultKnxClient.createStarted()) {
-            final var server = new Server(knxClient);
-            while (knxClient.isRunning()) {
-                Sleeper.seconds(60);
+        try (final var knxClient = DefaultKnxClient.createStarted();
+             final var server = Server.createStarted(knxClient)) {
+            while (knxClient.isRunning() && server.isRunning()) {
+                Sleeper.seconds(10);
             }
+            LOG.debug("Status: KnxClient={}, Server={}", knxClient.isRunning(), server.isRunning());
         }
     }
 

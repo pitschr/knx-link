@@ -21,7 +21,6 @@ import li.pitschmann.knx.core.address.GroupAddress;
 import li.pitschmann.knx.core.datapoint.DPT1;
 import li.pitschmann.knx.core.datapoint.DPT14;
 import li.pitschmann.knx.core.datapoint.DPTRaw;
-import li.pitschmann.knx.link.protocol.helpers.ProtocolHelper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

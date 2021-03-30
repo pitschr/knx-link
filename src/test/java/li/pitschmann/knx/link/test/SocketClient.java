@@ -27,13 +27,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -43,9 +46,10 @@ import java.util.concurrent.Executors;
 public final class SocketClient implements AutoCloseable {
     private static final Logger LOG = LoggerFactory.getLogger(SocketClient.class);
     private final int serverPort;
-    private Selector selector;
-    private Selector selector2;
-    private ExecutorService executorService;
+    private Selector writeSelector;
+    private Selector readSelector;
+    private final ExecutorService executorService = Executors.newSingleThreadExecutor();
+    private final List<String> receivedStrings = new ArrayList<>();
 
     private SocketClient(final int serverPort) {
         this.serverPort = serverPort;
@@ -60,8 +64,12 @@ public final class SocketClient implements AutoCloseable {
      */
     public static SocketClient createStarted(final int serverPort) {
         final var client = new SocketClient(serverPort);
-        client.open();
+        client.start();
         return client;
+    }
+
+    public List<String> getReceivedStrings() {
+        return receivedStrings;
     }
 
     public void readRequest(final String groupAddress, final String dataPointType) {
@@ -129,90 +137,117 @@ public final class SocketClient implements AutoCloseable {
         send(Arrays.copyOf(bytes, i));
     }
 
-    private void open() {
-        LOG.debug("*** START ({}) ***", this);
+    private void start() {
         try {
-            final var channel = SocketChannel.open(new InetSocketAddress("localhost", serverPort));
-            selector = Selector.open();
-            selector2 = Selector.open();
-            channel.configureBlocking(false);
-            // prepare channel for non-blocking and register to selector
-            channel.register(selector, SelectionKey.OP_WRITE);
-            channel.register(selector2, SelectionKey.OP_READ);
+            writeSelector = Selector.open();
+            readSelector = Selector.open();
 
-            executorService = Executors.newSingleThreadExecutor();
-            executorService.submit(new SocketListener());
-
-            LOG.debug("Socket Client (port: {}) is connected: {}",
-                    channel.getLocalAddress(), channel.isConnected());
+            createAndRegisterChannel();
         } catch (final IOException e) {
             LOG.error("I/O Exception during open()", e);
         }
+
+        executorService.submit(new SocketListener());
+    }
+
+    private void createAndRegisterChannel() throws IOException {
+        var connected = false;
+        do {
+            try {
+                final var channel = SocketChannel.open(new InetSocketAddress("localhost", serverPort));
+                channel.configureBlocking(false);
+                // prepare channel for non-blocking and register to selector
+                channel.register(writeSelector, SelectionKey.OP_WRITE);
+                channel.register(readSelector, SelectionKey.OP_READ);
+                LOG.debug("Socket Client (port: {}) is connected: {}",
+                        channel.getLocalAddress(), channel.isConnected());
+
+                connected = channel.isConnected();
+            } catch (final ConnectException ce) {
+                Sleeper.seconds(3); // try again in 3 seconds
+            }
+        } while (!connected);
     }
 
     @Override
     public void close() {
-        Closeables.closeQuietly(selector);
-        Closeables.closeQuietly(selector2);
+        Closeables.closeQuietly(writeSelector);
+        Closeables.closeQuietly(readSelector);
         Closeables.shutdownQuietly(executorService);
         LOG.debug("*** END ({}) ***", this);
     }
 
+    private void send(final byte[] bytes) {
+        try {
+            if (writeSelector.select() > 0) {
+                final var selectedKeys = writeSelector.selectedKeys().iterator();
+                while (selectedKeys.hasNext()) {
+                    final var key = selectedKeys.next();
+                    selectedKeys.remove();
+
+                    if (key.isValid() && key.isWritable()) {
+                        final var bytesToSend = ByteBuffer.wrap(bytes);
+                        ((SocketChannel) key.channel()).write(bytesToSend);
+                        LOG.debug("Write bytes: {}", (Object) ByteFormatter.formatHex(bytesToSend.array()));
+                    }
+                }
+            }
+        } catch (final Exception e) {
+            LOG.error("Exception thrown for Socket Client ({})", this, e);
+        }
+    }
+
     private class SocketListener implements Runnable {
         private final ByteBuffer byteBuffer = ByteBuffer.allocate(512);
+
         @Override
         public void run() {
+            LOG.debug("*** START ({}) ***", this);
             try {
-                while (!Thread.currentThread().isInterrupted() && selector2.select() > 0) {
-                    final var selectedKeys = selector2.selectedKeys().iterator();
+                while (!Thread.currentThread().isInterrupted()) {
+                    readSelector.select();
+                    final var selectedKeys = readSelector.selectedKeys().iterator();
                     while (selectedKeys.hasNext()) {
                         final var key = selectedKeys.next();
                         selectedKeys.remove();
-
                         if (key.isValid() && key.isReadable()) {
-                            final var socketChannel = (SocketChannel) key.channel();
-                            final var receivedBytes = readAsArray(socketChannel);
-                            LOG.debug("Read bytes: {}", (Object) ByteFormatter.formatHex(receivedBytes));
+                            read(key);
                         }
                     }
                 }
             } catch (final Exception e) {
                 LOG.error("Exception thrown for Socket Client ({})", this, e);
+            } finally {
+                LOG.debug("*** END ({}) ***", this);
             }
         }
 
-        private byte[] readAsArray(final SocketChannel channel) throws IOException {
+        private void read(final SelectionKey key) throws IOException {
             try {
-                channel.read(byteBuffer);
+                final var channel = (SocketChannel) key.channel();
+                int length = channel.read(byteBuffer);
+                if (length < 0) {
+                    // Channel is closed
+                    LOG.warn("Channel is closed. Reconnect in progress.");
+                    channel.close();
+                    createAndRegisterChannel();
+                    return;
+                } else {
+                    LOG.debug("channel read: {}", length);
+                }
+
                 byteBuffer.flip();
                 final var receivedBytes = new byte[byteBuffer.limit()];
                 byteBuffer.get(receivedBytes);
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("Receiving packet: {}", ByteFormatter.formatHexAsString(receivedBytes));
                 }
-                return receivedBytes;
+                System.out.println("Receiving packet: " + new String(receivedBytes, StandardCharsets.UTF_8));
+
+                receivedStrings.add(new String(receivedBytes, StandardCharsets.UTF_8));
             } finally {
                 byteBuffer.clear();
             }
-        }
-    }
-
-    private void send(final byte[] bytes) {
-        try {
-            selector.select();
-            final var selectedKeys = selector.selectedKeys().iterator();
-            while (selectedKeys.hasNext()) {
-                final var key = selectedKeys.next();
-                selectedKeys.remove();
-
-                if (key.isValid() && key.isWritable()) {
-                    final var bytesToSend = ByteBuffer.wrap(bytes);
-                    ((SocketChannel) key.channel()).write(bytesToSend);
-                    LOG.debug("Write bytes: {}", (Object) ByteFormatter.formatHex(bytesToSend.array()));
-                }
-            }
-        } catch (final Exception e) {
-            LOG.error("Exception thrown for Socket Client ({})", this, e);
         }
     }
 }

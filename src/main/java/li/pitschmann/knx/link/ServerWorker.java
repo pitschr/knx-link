@@ -18,6 +18,7 @@
 package li.pitschmann.knx.link;
 
 import li.pitschmann.knx.core.communication.KnxClient;
+import li.pitschmann.knx.core.datapoint.DPT1;
 import li.pitschmann.knx.core.utils.ByteFormatter;
 import li.pitschmann.knx.core.utils.Preconditions;
 import li.pitschmann.knx.core.utils.Sleeper;
@@ -88,11 +89,10 @@ public class ServerWorker {
     private void actionRead(final ChannelPacket packet) {
         final var bytes = Arrays.copyOfRange(packet.getBytes(), 2, packet.getBytes().length);
         final var readRequest = ReadRequestBody.of(bytes);
-
         final var groupAddress = readRequest.getGroupAddress();
         final var channel = packet.getChannel();
-
         LOG.debug("Send read request to group address: {}", groupAddress);
+
         knxClient.readRequest(groupAddress)
                 .thenAccept(b -> {
                     final var status = b ? "SUCCESS" : "FAILED";
@@ -106,10 +106,10 @@ public class ServerWorker {
                     final var dpv = knxClient.getStatusPool().getValue(groupAddress, dpt);
                     LOG.debug("Forward value of read request to channel ({}): {}", channel, dpv);
 
-                    final var responseBytes = ByteBuffer.wrap(dpv.toByteArray());
+                    final var text = dpv.toText() + dpt.getUnit();
+                    final var responseBytes = ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8));
                     writeToChannel(channel, responseBytes);
-                })
-                .thenAccept(x -> Sleeper.seconds(1));
+                });
     }
 
     /**
@@ -131,7 +131,6 @@ public class ServerWorker {
                     final var str = b ? "SUCCESS" : "FAILED";
                     final var strAsBytes = ByteBuffer.wrap(str.getBytes(StandardCharsets.UTF_8));
                     writeToChannel(channel, strAsBytes);
-                })
-                .thenAccept(x -> Sleeper.seconds(1));
+                });
     }
 }

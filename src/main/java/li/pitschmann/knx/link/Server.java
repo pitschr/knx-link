@@ -21,16 +21,19 @@ import li.pitschmann.knx.core.communication.KnxClient;
 import li.pitschmann.knx.core.datapoint.DPT1;
 import li.pitschmann.knx.core.datapoint.DataPointRegistry;
 import li.pitschmann.knx.core.utils.Closeables;
+import li.pitschmann.knx.core.utils.Sleeper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public final class Server implements Runnable {
+public final class Server implements Runnable, AutoCloseable {
     private static final Logger LOG = LoggerFactory.getLogger(Server.class);
 
     /**
@@ -38,16 +41,44 @@ public final class Server implements Runnable {
      */
     private static final int SERVER_CHANNEL_PORT = 10222;
 
-    private final ExecutorService executorService = Executors.newSingleThreadExecutor();
+    private final ExecutorService executorService = Executors.newFixedThreadPool(2);
     private final ServerWorker serverWorker;
+    private boolean running;
 
     public Server(final KnxClient knxClient) {
         DataPointRegistry.getDataPointType(DPT1.SWITCH.getId()); // warm up!
         serverWorker = new ServerWorker(knxClient);
     }
 
+    public static final Server createStarted(final KnxClient knxClient) {
+        final var server = new Server(knxClient);
+        server.start();
+        return server;
+    }
+
+    private void start() {
+        executorService.submit(this);
+        // wait until running state is true (up to 10 sec)
+        if (Sleeper.milliseconds(100, this::isRunning, 10000)) {
+            LOG.info("Server started up: {}", this);
+        } else {
+            LOG.error("Something went wrong starting up the server within 10 seconds. Please check logs.");
+            close(); // call close() method to ensure that it is cleaned up!
+        }
+    }
+
+    @Override
+    public void close() {
+        Closeables.shutdownQuietly(executorService);
+    }
+
+    public boolean isRunning() {
+        return running;
+    }
+
     @Override
     public void run() {
+        running = true;
         LOG.trace("*** START ***");
 
         try (final var serverChannel = ServerSocketChannel.open()) {
@@ -64,7 +95,12 @@ public final class Server implements Runnable {
 
             while (!Thread.currentThread().isInterrupted()) {
                 final var packet = serverCommunicator.nextPacket();
-                serverWorker.execute(packet);
+                try {
+                    serverWorker.execute(packet);
+                } catch (final Exception e) {
+                    LOG.error("Error inside ", e);
+                    packet.getChannel().write(ByteBuffer.wrap("ERROR".getBytes(StandardCharsets.UTF_8)));
+                }
             }
 
         } catch (final InterruptedException ie) {
@@ -77,6 +113,7 @@ public final class Server implements Runnable {
         } finally {
             Closeables.shutdownQuietly(executorService);
             LOG.trace("*** END ***");
+            running = false;
         }
     }
 }
