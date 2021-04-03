@@ -45,17 +45,12 @@ public final class Header {
 
     private Header(final byte versionAsByte, final byte actionAsByte) {
         version = Byte.toUnsignedInt(versionAsByte);
-        action = parseAction(actionAsByte);
+        action = Action.of(Byte.toUnsignedInt(actionAsByte));
     }
 
     public static Header of(final byte[] bytes) {
         Preconditions.checkArgument(bytes.length == STRUCTURE_LENGTH);
         return new Header(bytes[0], bytes[1]);
-    }
-
-    private Action parseAction(final byte actionAsByte) {
-        final var commandInt = Byte.toUnsignedInt(actionAsByte);
-        return Action.values()[commandInt];
     }
 
     public int getVersion() {

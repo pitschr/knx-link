@@ -19,16 +19,15 @@ package li.pitschmann.knx.link;
 
 import li.pitschmann.knx.core.address.GroupAddress;
 import li.pitschmann.knx.core.communication.KnxClient;
-import li.pitschmann.knx.core.communication.KnxStatusPool;
 import li.pitschmann.knx.core.datapoint.DPT1;
 import li.pitschmann.knx.core.datapoint.DPT11;
 import li.pitschmann.knx.core.datapoint.DPT14;
 import li.pitschmann.knx.core.datapoint.DPT19;
 import li.pitschmann.knx.core.datapoint.DPT2;
 import li.pitschmann.knx.core.datapoint.DPT28;
+import li.pitschmann.knx.core.datapoint.DPTRaw;
 import li.pitschmann.knx.core.datapoint.DataPointType;
 import li.pitschmann.knx.core.datapoint.value.DPT19Value;
-import li.pitschmann.knx.core.datapoint.value.DataPointValue;
 import li.pitschmann.knx.link.test.SocketClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,12 +37,11 @@ import org.junit.jupiter.api.Test;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.concurrent.CompletableFuture;
 
+import static li.pitschmann.knx.link.test.Helper.createKnxClientMock;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
@@ -59,10 +57,7 @@ class ServerTest {
 
     @BeforeEach
     void setUp() {
-        knxClientMock = mock(KnxClient.class);
-        when(knxClientMock.readRequest(any(GroupAddress.class))).thenReturn(CompletableFuture.completedFuture(true));
-        when(knxClientMock.writeRequest(any(GroupAddress.class), any(DataPointValue.class))).thenReturn(CompletableFuture.completedFuture(true));
-        when(knxClientMock.getStatusPool()).thenReturn(mock(KnxStatusPool.class));
+        knxClientMock = createKnxClientMock();
         server = Server.createStarted(knxClientMock);
         client = spy(SocketClient.createStarted(10222));
     }
@@ -83,13 +78,13 @@ class ServerTest {
 
         client.readRequest("8/3/250", "1.004");
 
+        final var expectedGroupAddress = GroupAddress.of(8, 3, 250);
         verify(knxClientMock, timeout(1000))
-                .readRequest(any(GroupAddress.class));
+                .readRequest(expectedGroupAddress);
         verify(knxClientMock.getStatusPool(), timeout(1000))
-                .getValue(any(GroupAddress.class), any(DataPointType.class));
+                .getValue(eq(expectedGroupAddress), any(DataPointType.class));
 
-        assertThat(client.getReceivedStrings()).hasSize(2);
-        assertThat(client.getReceivedStrings().get(0)).isEqualTo("SUCCESS", "Ramp");
+        assertThat(client.getReceivedStrings()).containsExactly("SUCCESS", "Ramp");
     }
 
     @Test
@@ -102,12 +97,32 @@ class ServerTest {
 
         client.readRequest("1/2/3", "11.001");
 
+        final var expectedGroupAddress = GroupAddress.of(1, 2, 3);
         verify(knxClientMock, timeout(1000))
-                .readRequest(any(GroupAddress.class));
+                .readRequest(expectedGroupAddress);
         verify(knxClientMock.getStatusPool(), timeout(1000))
-                .getValue(any(GroupAddress.class), any(DataPointType.class));
+                .getValue(eq(expectedGroupAddress), any(DataPointType.class));
 
         assertThat(client.getReceivedStrings()).containsExactly("SUCCESS", "2021-03-28");
+    }
+
+    @Test
+    @DisplayName("Read Request with unsupported DPT")
+    void test_Server_ReadRequest_UnsupportedDPT() {
+        when(knxClientMock.getStatusPool().getValue(
+                any(GroupAddress.class),
+                any(DataPointType.class)))
+                .thenReturn(DPTRaw.VALUE.of((byte) 0x12, (byte) 0x67));
+
+        client.readRequest("1/2/3", "99.9999");
+
+        final var expectedGroupAddress = GroupAddress.of(1, 2, 3);
+        verify(knxClientMock, timeout(1000))
+                .readRequest(expectedGroupAddress);
+        verify(knxClientMock.getStatusPool(), timeout(1000))
+                .getValue(eq(expectedGroupAddress), any(DataPointType.class));
+
+        assertThat(client.getReceivedStrings()).containsExactly("SUCCESS", "0x12 67");
     }
 
     @Test
@@ -120,6 +135,8 @@ class ServerTest {
                         eq(GroupAddress.of(1, 2, 150)),
                         eq(DPT1.SWITCH.of(true))
                 );
+
+        assertThat(client.getReceivedStrings()).containsExactly("SUCCESS");
     }
 
     @Test
@@ -132,6 +149,8 @@ class ServerTest {
                         eq(GroupAddress.of(12, 1, 33)),
                         eq(DPT2.ALARM_CONTROL.of(true, false))
                 );
+
+        assertThat(client.getReceivedStrings()).containsExactly("SUCCESS");
     }
 
     @Test
@@ -144,6 +163,8 @@ class ServerTest {
                         eq(GroupAddress.of(13, 3, 170)),
                         eq(DPT14.VOLUME_FLUX_METER.of(1234.567d))
                 );
+
+        assertThat(client.getReceivedStrings()).containsExactly("SUCCESS");
     }
 
     @Test
@@ -161,6 +182,8 @@ class ServerTest {
                                 new DPT19Value.Flags(new byte[]{0x03, (byte) 0x80})
                         ))
                 );
+
+        assertThat(client.getReceivedStrings()).containsExactly("SUCCESS");
     }
 
     @Test
@@ -173,5 +196,7 @@ class ServerTest {
                         eq(GroupAddress.of(1, 2, 3)),
                         eq(DPT28.UTF_8.of("Hällö 読継 食う न्त्राल яуи δολ 123"))
                 );
+
+        assertThat(client.getReceivedStrings()).containsExactly("SUCCESS");
     }
 }

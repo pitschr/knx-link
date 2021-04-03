@@ -32,7 +32,7 @@ import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-public class ServerCommunicator implements Runnable {
+public final class ServerCommunicator implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(ServerCommunicator.class);
     private final SecurityAuditor securityAuditor = new SecurityAuditor();
     private final ByteBuffer buff = ByteBuffer.allocate(512);

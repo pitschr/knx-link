@@ -18,10 +18,8 @@
 package li.pitschmann.knx.link;
 
 import li.pitschmann.knx.core.communication.KnxClient;
-import li.pitschmann.knx.core.datapoint.DPT1;
 import li.pitschmann.knx.core.utils.ByteFormatter;
 import li.pitschmann.knx.core.utils.Preconditions;
-import li.pitschmann.knx.core.utils.Sleeper;
 import li.pitschmann.knx.link.protocol.Header;
 import li.pitschmann.knx.link.protocol.ReadRequestBody;
 import li.pitschmann.knx.link.protocol.WriteRequestBody;
@@ -38,7 +36,7 @@ import java.util.Objects;
 /**
  * Worker for Server
  */
-public class ServerWorker {
+public final class ServerWorker {
     private static final Logger LOG = LoggerFactory.getLogger(ServerWorker.class);
     private final KnxClient knxClient;
 
@@ -47,15 +45,17 @@ public class ServerWorker {
     }
 
     private static void writeToChannel(final SocketChannel channel, final ByteBuffer bb) {
-        try {
-            if (channel.isOpen() && channel.isConnected()) {
+        if (channel.isConnected()) {
+            try {
                 channel.write(bb);
-                LOG.debug("Written to channel ({}): {}", channel, ByteFormatter.formatHex(bb.array()));
-            } else {
-                LOG.warn("The channel ({}) seems not be open anymore and could not respond: {}", channel, bb);
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Written to channel ({}): {}", channel, StandardCharsets.UTF_8.decode(bb));
+                }
+            } catch (final IOException e) {
+                LOG.error("I/O Exception during replying to channel: {}", channel, e);
             }
-        } catch (final IOException e) {
-            LOG.error("I/O Exception during replying to channel: {}", channel, e);
+        } else {
+            LOG.warn("The channel ({}) seems not be open anymore and could not respond: {}", channel, StandardCharsets.UTF_8.decode(bb));
         }
     }
 
@@ -66,8 +66,7 @@ public class ServerWorker {
         // Currently we only have Protocol V1 - so no special strategy implementation required
         final var header = Header.of(new byte[]{bytes[0], bytes[1]});
         Preconditions.checkArgument(header.getVersion() == 0x01,
-                "Bytes is not supported for this protocol implementation '{}': {}",
-                getClass(), ByteFormatter.formatHexAsString(bytes));
+                "Protocol Version '{}' is not supported: {}", header.getVersion(), ByteFormatter.formatHexAsString(bytes));
 
         switch (header.getAction()) {
             case READ_REQUEST:
@@ -76,8 +75,6 @@ public class ServerWorker {
             case WRITE_REQUEST:
                 actionWrite(packet);
                 break;
-            default:
-                throw new AssertionError(); // should never happen!
         }
     }
 
@@ -100,15 +97,17 @@ public class ServerWorker {
                     LOG.debug("Read Request was: {}", status);
 
                     writeToChannel(channel, statusAsBytes);
-                })
-                .thenAccept(x -> {
-                    final var dpt = readRequest.getDataPointType();
-                    final var dpv = knxClient.getStatusPool().getValue(groupAddress, dpt);
-                    LOG.debug("Forward value of read request to channel ({}): {}", channel, dpv);
 
-                    final var text = dpv.toText() + dpt.getUnit();
-                    final var responseBytes = ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8));
-                    writeToChannel(channel, responseBytes);
+                    // only look up in status pool when read request was successful
+                    if (b) {
+                        final var dpt = readRequest.getDataPointType();
+                        final var dpv = knxClient.getStatusPool().getValue(groupAddress, dpt);
+                        LOG.debug("Forward value of read request to channel ({}): {}", channel, dpv);
+
+                        final var text = dpv.toText() + dpt.getUnit();
+                        final var responseBytes = ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8));
+                        writeToChannel(channel, responseBytes);
+                    }
                 });
     }
 

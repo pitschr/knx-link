@@ -17,8 +17,6 @@
 
 package li.pitschmann.knx.link.test;
 
-import li.pitschmann.knx.core.address.GroupAddress;
-import li.pitschmann.knx.core.annotations.Nullable;
 import li.pitschmann.knx.core.utils.ByteFormatter;
 import li.pitschmann.knx.core.utils.Closeables;
 import li.pitschmann.knx.core.utils.Sleeper;
@@ -35,7 +33,6 @@ import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -46,10 +43,10 @@ import java.util.concurrent.Executors;
 public final class SocketClient implements AutoCloseable {
     private static final Logger LOG = LoggerFactory.getLogger(SocketClient.class);
     private final int serverPort;
-    private Selector writeSelector;
-    private Selector readSelector;
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
     private final List<String> receivedStrings = new ArrayList<>();
+    private Selector writeSelector;
+    private Selector readSelector;
 
     private SocketClient(final int serverPort) {
         this.serverPort = serverPort;
@@ -73,69 +70,17 @@ public final class SocketClient implements AutoCloseable {
     }
 
     public void readRequest(final String groupAddress, final String dataPointType) {
-        sendProtocolV1(Action.READ_REQUEST, groupAddress, dataPointType, null);
+        send(
+                Helper.createProtocolV1Packet(Action.READ_REQUEST, groupAddress, dataPointType, null)
+        );
     }
 
     public void writeRequest(final String groupAddress, final String dataPointType, final String... values) {
-        sendProtocolV1(Action.WRITE_REQUEST, groupAddress, dataPointType, values);
+        send(
+                Helper.createProtocolV1Packet(Action.WRITE_REQUEST, groupAddress, dataPointType, values)
+        );
     }
 
-    /**
-     * Send a message in Protocol Version 1
-     *
-     * @param action       the action to be requested; may not be null
-     * @param groupAddress the group address in free-level (1), two-level (1/2)
-     *                     or three-level (1/2/3) format; may not be null
-     * @param dpt          the data point type in "x.y" format (e.g. 1.001); may be null (defaults to 0.000)
-     * @param arguments    array of string that represents the arguemnt to be sent; may be null for read (defaults to new String[0])
-     */
-    private void sendProtocolV1(final Action action,
-                                final String groupAddress,
-                                final @Nullable String dpt,
-                                final @Nullable String[] arguments) {
-        final var bytes = new byte[100];
-        int i = 0;
-
-        // Protocol Version 1
-        bytes[i++] = 0x01;
-        // Action (read, write)
-        bytes[i++] = action.getByte();
-        // Group Address
-        final var groupAddressAsBytes = GroupAddress.of(groupAddress).toByteArray();
-        bytes[i++] = groupAddressAsBytes[0];
-        bytes[i++] = groupAddressAsBytes[1];
-        // Data Point type
-        if (dpt != null) {
-            final var dataPointType = dpt.split("\\.");
-            final var type = Integer.parseInt(dataPointType[0]);
-            final var subType = Integer.parseInt(dataPointType[1]);
-            bytes[i++] = (byte) ((type & 0xFF00) >> 8);
-            bytes[i++] = (byte) (type & 0xFF);
-            bytes[i++] = (byte) ((subType & 0xFF00) >> 8);
-            bytes[i++] = (byte) (subType & 0xFF);
-        } else {
-            i += 4; // skip 4 bytes and leave them as 0x00
-        }
-        // Arguments
-        if (arguments != null) {
-            for (int a = 0; a < arguments.length; a++) {
-                if (a != 0) {
-                    bytes[i++] = ' '; // space
-                }
-                bytes[i++] = '"'; // quote
-                final var argAsBytes = arguments[a].getBytes(StandardCharsets.UTF_8);
-                System.arraycopy(argAsBytes, 0, bytes, i, argAsBytes.length);
-                i += argAsBytes.length;
-                bytes[i++] = '"'; // quote
-            }
-        }
-
-        if (action == Action.WRITE_REQUEST) {
-            bytes[i++] = 0x00; // +1 for NULL termination
-        }
-
-        send(Arrays.copyOf(bytes, i));
-    }
 
     private void start() {
         try {
