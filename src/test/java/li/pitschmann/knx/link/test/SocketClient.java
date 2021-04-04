@@ -33,6 +33,7 @@ import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -65,8 +66,30 @@ public final class SocketClient implements AutoCloseable {
         return client;
     }
 
-    public List<String> getReceivedStrings() {
-        return receivedStrings;
+    /**
+     * Verifies if the {@code expectedReceivedStrings} has been received by
+     * the current {@link SocketClient} within 5 hardcoded-second timeout.
+     *
+     * @param expectedReceivedStrings expected strings to be received; may be empty
+     * @throws AssertionError in case there was a mismatch or timeout occurred first
+     */
+    public void verifyReceivedStrings(String... expectedReceivedStrings) {
+        var result = Sleeper.milliseconds(50, () -> {
+            if (receivedStrings.size() == expectedReceivedStrings.length) {
+                for (var i = 0; i < expectedReceivedStrings.length; i++) {
+                    if (!expectedReceivedStrings[i].equals(receivedStrings.get(i))) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            return false;
+        }, 5000);
+
+        if (!result) {
+            throw new AssertionError("Not expected received strings: " +
+                    "expected=" + Arrays.toString(expectedReceivedStrings) + ", actual=" + receivedStrings);
+        }
     }
 
     public void readRequest(final String groupAddress, final String dataPointType) {

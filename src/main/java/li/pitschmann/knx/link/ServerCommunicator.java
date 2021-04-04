@@ -32,6 +32,11 @@ import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
+/**
+ * Communicator for {@link Server}. Accepts channel and reads bytes
+ * from channel. The read bytes are added to {@link BlockingQueue}
+ * as a {@link ChannelPacket}.
+ */
 public final class ServerCommunicator implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(ServerCommunicator.class);
     private final SecurityAuditor securityAuditor = new SecurityAuditor();
@@ -47,12 +52,17 @@ public final class ServerCommunicator implements Runnable {
         return this.queue.take();
     }
 
+    private Selector createSelector() throws IOException {
+        final var selector = Selector.open();
+        channel.register(selector, SelectionKey.OP_ACCEPT);
+        LOG.debug("Selector created, now ready to accept connections at channel: {}", channel);
+        return selector;
+    }
+
     @Override
     public void run() {
         LOG.trace("*** START ***");
-        try (final var selector = Selector.open()) {
-            channel.register(selector, SelectionKey.OP_ACCEPT);
-            LOG.debug("Selector created, now ready to accept connections at port: {}", channel);
+        try (final var selector = createSelector()) {
             while (!Thread.interrupted()) {
                 selector.select();
                 final var selectedKeys = selector.selectedKeys().iterator();
@@ -124,15 +134,11 @@ public final class ServerCommunicator implements Runnable {
                     LOG.debug("Receiving packet.");
                 }
 
-                try {
-                    this.buff.flip();
-                    receivedBytes = new byte[this.buff.limit()];
-                    this.buff.get(receivedBytes);
-                    if (LOG.isDebugEnabled()) {
-                        LOG.debug("Receiving packet: {}", ByteFormatter.formatHexAsString(receivedBytes));
-                    }
-                } finally {
-                    this.buff.clear();
+                this.buff.flip();
+                receivedBytes = new byte[this.buff.limit()];
+                this.buff.get(receivedBytes);
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Receiving packet: {}", ByteFormatter.formatHexAsString(receivedBytes));
                 }
 
                 queue.add(new ChannelPacket(channel, receivedBytes));

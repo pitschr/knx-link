@@ -40,7 +40,7 @@ public final class ServerWorker {
     private static final Logger LOG = LoggerFactory.getLogger(ServerWorker.class);
     private final KnxClient knxClient;
 
-    public ServerWorker(final KnxClient knxClient) {
+    ServerWorker(final KnxClient knxClient) {
         this.knxClient = Objects.requireNonNull(knxClient);
     }
 

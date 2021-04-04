@@ -84,7 +84,7 @@ class ServerTest {
         verify(knxClientMock.getStatusPool(), timeout(1000))
                 .getValue(eq(expectedGroupAddress), any(DataPointType.class));
 
-        assertThat(client.getReceivedStrings()).containsExactly("SUCCESS", "Ramp");
+        client.verifyReceivedStrings("SUCCESS", "Ramp");
     }
 
     @Test
@@ -103,7 +103,7 @@ class ServerTest {
         verify(knxClientMock.getStatusPool(), timeout(1000))
                 .getValue(eq(expectedGroupAddress), any(DataPointType.class));
 
-        assertThat(client.getReceivedStrings()).containsExactly("SUCCESS", "2021-03-28");
+        client.verifyReceivedStrings("SUCCESS", "2021-03-28");
     }
 
     @Test
@@ -122,7 +122,7 @@ class ServerTest {
         verify(knxClientMock.getStatusPool(), timeout(1000))
                 .getValue(eq(expectedGroupAddress), any(DataPointType.class));
 
-        assertThat(client.getReceivedStrings()).containsExactly("SUCCESS", "0x12 67");
+        client.verifyReceivedStrings("SUCCESS", "0x12 67");
     }
 
     @Test
@@ -136,7 +136,7 @@ class ServerTest {
                         eq(DPT1.SWITCH.of(true))
                 );
 
-        assertThat(client.getReceivedStrings()).containsExactly("SUCCESS");
+        client.verifyReceivedStrings("SUCCESS");
     }
 
     @Test
@@ -150,7 +150,7 @@ class ServerTest {
                         eq(DPT2.ALARM_CONTROL.of(true, false))
                 );
 
-        assertThat(client.getReceivedStrings()).containsExactly("SUCCESS");
+        client.verifyReceivedStrings("SUCCESS");
     }
 
     @Test
@@ -164,7 +164,7 @@ class ServerTest {
                         eq(DPT14.VOLUME_FLUX_METER.of(1234.567d))
                 );
 
-        assertThat(client.getReceivedStrings()).containsExactly("SUCCESS");
+        client.verifyReceivedStrings("SUCCESS");
     }
 
     @Test
@@ -183,7 +183,7 @@ class ServerTest {
                         ))
                 );
 
-        assertThat(client.getReceivedStrings()).containsExactly("SUCCESS");
+        client.verifyReceivedStrings("SUCCESS");
     }
 
     @Test
@@ -197,6 +197,6 @@ class ServerTest {
                         eq(DPT28.UTF_8.of("Hällö 読継 食う न्त्राल яуи δολ 123"))
                 );
 
-        assertThat(client.getReceivedStrings()).containsExactly("SUCCESS");
+        client.verifyReceivedStrings("SUCCESS");
     }
 }
