@@ -28,6 +28,7 @@ import li.pitschmann.knx.core.datapoint.DPT28;
 import li.pitschmann.knx.core.datapoint.DPTRaw;
 import li.pitschmann.knx.core.datapoint.DataPointType;
 import li.pitschmann.knx.core.datapoint.value.DPT19Value;
+import li.pitschmann.knx.link.config.Config;
 import li.pitschmann.knx.link.test.SocketClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,10 +39,11 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
+import static li.pitschmann.knx.link.test.Helper.createConfigMock;
 import static li.pitschmann.knx.link.test.Helper.createKnxClientMock;
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
@@ -58,8 +60,11 @@ class ServerTest {
     @BeforeEach
     void setUp() {
         knxClientMock = createKnxClientMock();
-        server = Server.createStarted(knxClientMock);
-        client = spy(SocketClient.createStarted(10222));
+        server = spy(new Server(createConfigMock()));
+        // as we don't want to communicate with real KNX Net/IP device
+        doReturn(knxClientMock).when(server).getKnxClient();
+        server.start();
+        client = spy(SocketClient.createStarted(Config.DEFAULT_SERVER_PORT));
     }
 
     @AfterEach

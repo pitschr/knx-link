@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
-import java.util.Objects;
+import java.util.Set;
 
 /**
  * Security Auditor
@@ -32,22 +32,32 @@ import java.util.Objects;
  */
 public final class SecurityAuditor {
     private static final Logger LOG = LoggerFactory.getLogger(SecurityAuditor.class);
-    private static final String[] DEFAULT_IP_ADDRESS_WHITELIST = new String[]{"127.0.0.1"};
-    private final String[] ipAddressWhitelist;
+    private static final Set<String> DEFAULT_ALLOWED_ADDRESSES = Set.of("127.0.0.1");
+    private final Set<String> allowedAddresses;
 
     public SecurityAuditor() {
-        this(DEFAULT_IP_ADDRESS_WHITELIST);
+        this(DEFAULT_ALLOWED_ADDRESSES);
     }
 
-    public SecurityAuditor(final String[] ipAddressWhitelist) {
-        this.ipAddressWhitelist = Objects.requireNonNull(ipAddressWhitelist);
-        LOG.info("Whitelist IP Addresses: {}", (Object) this.ipAddressWhitelist); // pass as an object, not as an array to vargs
+    public SecurityAuditor(final Set<String> allowedAddresses) {
+        this.allowedAddresses = Set.copyOf(allowedAddresses);
+        LOG.info("Allowed addresses: {}", this.allowedAddresses);
+    }
+
+    /**
+     * Returns set of allowed addresses that is accepted by the
+     * {@link SecurityAuditor}
+     *
+     * @return immutable set of allowed addresses
+     */
+    public Set<String> getAllowedAddresses() {
+        return Set.copyOf(allowedAddresses);
     }
 
     /**
      * Checks if the {@link SocketChannel} is coming from a valid remote address.
      * The remote address from {@link SocketChannel} will be compared against the
-     * {@link #DEFAULT_IP_ADDRESS_WHITELIST}.
+     * {@link #DEFAULT_ALLOWED_ADDRESSES}.
      *
      * <p> If the remote address could not be read for any reasons
      * (e.g. due {@link IOException}), then {@code false} is returned.
@@ -62,11 +72,9 @@ public final class SecurityAuditor {
                 final var inetSocketAddress = (InetSocketAddress) socketAddress;
                 final var ipAddress = inetSocketAddress.getAddress().getHostAddress();
 
-                for (var validAddress : ipAddressWhitelist) {
-                    if (validAddress.equals(ipAddress)) {
-                        LOG.debug("Socket channel IP address found in whitelist: {}", ipAddress);
-                        return true;
-                    }
+                if (allowedAddresses.contains(ipAddress)) {
+                    LOG.debug("Socket channel IP address found in whitelist: {}", ipAddress);
+                    return true;
                 }
                 LOG.warn("Socket channel IP address not found in whitelist: {}", ipAddress);
             }

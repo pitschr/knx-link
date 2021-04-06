@@ -20,6 +20,7 @@ package li.pitschmann.knx.link.test;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import li.pitschmann.knx.core.utils.Sleeper;
+import li.pitschmann.knx.link.config.Config;
 import org.slf4j.LoggerFactory;
 
 import java.util.Scanner;
@@ -60,7 +61,7 @@ public class SocketClientMainTest {
     public static void main(String[] args) {
         printHelp();
         final var scanner = new Scanner(System.in);
-        try (final var client = SocketClient.createStarted(10222)) {
+        try (final var client = SocketClient.createStarted(Config.DEFAULT_SERVER_PORT)) {
             loop:
             while (true) {
                 Sleeper.seconds(1);

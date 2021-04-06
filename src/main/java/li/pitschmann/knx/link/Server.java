@@ -17,46 +17,64 @@
 
 package li.pitschmann.knx.link;
 
+import li.pitschmann.knx.core.communication.DefaultKnxClient;
 import li.pitschmann.knx.core.communication.KnxClient;
 import li.pitschmann.knx.core.datapoint.DPT1;
 import li.pitschmann.knx.core.datapoint.DataPointRegistry;
 import li.pitschmann.knx.core.utils.Closeables;
 import li.pitschmann.knx.core.utils.Sleeper;
+import li.pitschmann.knx.link.config.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+/**
+ * The KNX Link Server
+ *
+ * <p> Will create a server socket, listens to incoming socket channels
+ * for requests and acts as a proxy between socket channel and the KNX
+ * Net/IP device.
+ */
 public final class Server implements Runnable, AutoCloseable {
     private static final Logger LOG = LoggerFactory.getLogger(Server.class);
-
-    /**
-     * The port that should be allocated by the server and connected by clients
-     */
-    private static final int SERVER_CHANNEL_PORT = 10222;
-
+    private final Config config;
     private final ExecutorService executorService = Executors.newFixedThreadPool(2);
-    private final ServerWorker serverWorker;
-    private boolean running;
+    private final AtomicBoolean running = new AtomicBoolean();
 
-    public Server(final KnxClient knxClient) {
+    Server(final Config config) {
+        this.config = Objects.requireNonNull(config);
         DataPointRegistry.getDataPointType(DPT1.SWITCH.getId()); // warm up!
-        serverWorker = new ServerWorker(knxClient);
     }
 
-    public static final Server createStarted(final KnxClient knxClient) {
-        final var server = new Server(knxClient);
+    /**
+     * Creates a new KNX Link Server and starts
+     *
+     * @param config the configuration; may not be null
+     * @return the KNX Link Server which has been started
+     */
+    public static Server createStarted(final Config config) {
+        final var server = new Server(config);
         server.start();
         return server;
     }
 
-    private void start() {
+    /**
+     * Lazy initialization of {@link KnxClient}
+     *
+     * @return the {@link KnxClient}
+     */
+    KnxClient getKnxClient() {
+        return DefaultKnxClient.createStarted(config.getKnxClientConfig());
+    }
+
+    /**
+     * Starts the KNX Link Server
+     */
+    public void start() {
         executorService.submit(this);
         // wait until running state is true (up to 10 sec)
         if (Sleeper.milliseconds(100, this::isRunning, 10000)) {
@@ -67,53 +85,57 @@ public final class Server implements Runnable, AutoCloseable {
         }
     }
 
+    /**
+     * Stops and closes the KNX Link Server
+     */
     @Override
     public void close() {
         Closeables.shutdownQuietly(executorService);
     }
 
+    /**
+     * Indicates if the KNX Link Server is still running
+     *
+     * @return {@code true} if running, otherwise {@code false}
+     */
     public boolean isRunning() {
-        return running;
+        return running.get();
     }
 
     @Override
     public void run() {
-        running = true;
+        if (running.getAndSet(true)) {
+            LOG.warn("There is already a Server running. Do nothing.");
+            return;
+        }
+
         LOG.trace("*** START ***");
 
-        try (final var serverChannel = ServerSocketChannel.open()) {
+        try (final var knxClient = getKnxClient()) {
 
-            final var serverSocketAddress = new InetSocketAddress(SERVER_CHANNEL_PORT);
-            serverChannel.bind(serverSocketAddress);
-            serverChannel.configureBlocking(false);
-
-            final var serverChannelPort = serverChannel.socket().getLocalPort();
-            LOG.debug("Server Channel created at port: {}", serverChannelPort);
-
-            final var serverCommunicator = new ServerCommunicator(serverChannel);
+            final var serverCommunicator = new ServerCommunicator(config);
             executorService.submit(serverCommunicator);
 
-            while (!Thread.currentThread().isInterrupted()) {
+            final var serverWorker = new ServerWorker(knxClient);
+
+            while (!Thread.currentThread().isInterrupted() && knxClient.isRunning()) {
                 final var packet = serverCommunicator.nextPacket();
                 try {
                     serverWorker.execute(packet);
                 } catch (final Exception e) {
-                    LOG.error("Error inside ", e);
-                    packet.getChannel().write(ByteBuffer.wrap("ERROR".getBytes(StandardCharsets.UTF_8)));
+                    LOG.error("An exception happened inside the worker", e);
                 }
             }
 
         } catch (final InterruptedException ie) {
             LOG.debug("Interrupt signal caught");
             Thread.currentThread().interrupt();
-        } catch (final IOException ioe) {
-            LOG.error("I/O Exception thrown", ioe);
         } catch (final Exception e) {
-            LOG.error("Other exception", e);
+            LOG.error("An other exception occurred", e);
         } finally {
             Closeables.shutdownQuietly(executorService);
+            running.set(false);
             LOG.trace("*** END ***");
-            running = false;
         }
     }
 }

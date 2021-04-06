@@ -19,10 +19,12 @@ package li.pitschmann.knx.link;
 
 import li.pitschmann.knx.core.utils.ByteFormatter;
 import li.pitschmann.knx.core.utils.Closeables;
+import li.pitschmann.knx.link.config.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -39,20 +41,39 @@ import java.util.concurrent.LinkedBlockingQueue;
  */
 public final class ServerCommunicator implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(ServerCommunicator.class);
-    private final SecurityAuditor securityAuditor = new SecurityAuditor();
+    private final Config config;
     private final ByteBuffer buff = ByteBuffer.allocate(512);
     private final BlockingQueue<ChannelPacket> queue = new LinkedBlockingQueue<>();
-    private final ServerSocketChannel channel;
 
-    ServerCommunicator(final ServerSocketChannel channel) {
-        this.channel = Objects.requireNonNull(channel);
+    ServerCommunicator(final Config config) {
+        this.config = Objects.requireNonNull(config);
     }
 
+    /**
+     * Returns the next {@link ChannelPacket}. This method is blocking until
+     * the next {@link ChannelPacket} is available.
+     *
+     * @return the {@link ChannelPacket}
+     * @throws InterruptedException if the thread has been interrupted
+     */
     public ChannelPacket nextPacket() throws InterruptedException {
         return this.queue.take();
     }
 
-    private Selector createSelector() throws IOException {
+    /**
+     * Opens a {@link Selector} and configures the {@link ServerSocketChannel} to
+     * listen on the port defined by {@link Config#getServerPort()}
+     *
+     * @param channel a {@link ServerSocketChannel}; may not be null
+     * @return a new {@link Selector}
+     * @throws IOException if an I/O exception occurred
+     */
+    private Selector createSelector(final ServerSocketChannel channel) throws IOException {
+        final var serverSocketAddress = new InetSocketAddress(config.getServerPort());
+        channel.bind(serverSocketAddress);
+        channel.configureBlocking(false);
+        LOG.debug("Server Channel opened at port: {}", serverSocketAddress.getPort());
+
         final var selector = Selector.open();
         channel.register(selector, SelectionKey.OP_ACCEPT);
         LOG.debug("Selector created, now ready to accept connections at channel: {}", channel);
@@ -62,7 +83,8 @@ public final class ServerCommunicator implements Runnable {
     @Override
     public void run() {
         LOG.trace("*** START ***");
-        try (final var selector = createSelector()) {
+        try (final var serverSocketChannel = ServerSocketChannel.open();
+             final var selector = createSelector(serverSocketChannel)) {
             while (!Thread.interrupted()) {
                 selector.select();
                 final var selectedKeys = selector.selectedKeys().iterator();
@@ -99,7 +121,7 @@ public final class ServerCommunicator implements Runnable {
             final var client = ((ServerSocketChannel) key.channel()).accept();
 
             // check if client passes the security checks
-            if (securityAuditor.isRemoteAddressValid(client)) {
+            if (config.getSecurityAuditor().isRemoteAddressValid(client)) {
                 client.configureBlocking(false);
                 client.register(key.selector(), SelectionKey.OP_READ);
                 LOG.debug("Client accepted: {}", client.getRemoteAddress());
@@ -122,31 +144,28 @@ public final class ServerCommunicator implements Runnable {
         final var channel = (SocketChannel) key.channel();
 
         try {
-            final byte[] receivedBytes;
-            try {
-                int read = channel.read(buff);
+            int read = channel.read(buff);
 
-                if (read < 0) {
-                    key.cancel();
-                    LOG.debug("Client says bye! {}", channel.getRemoteAddress());
-                    return;
-                } else {
-                    LOG.debug("Receiving packet.");
-                }
-
-                this.buff.flip();
-                receivedBytes = new byte[this.buff.limit()];
-                this.buff.get(receivedBytes);
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Receiving packet: {}", ByteFormatter.formatHexAsString(receivedBytes));
-                }
-
-                queue.add(new ChannelPacket(channel, receivedBytes));
-            } finally {
-                buff.clear();
+            if (read < 0) {
+                key.cancel();
+                LOG.debug("Client says bye! {}", channel.getRemoteAddress());
+                return;
+            } else {
+                LOG.debug("Receiving packet.");
             }
+
+            this.buff.flip();
+            final byte[] receivedBytes = new byte[this.buff.limit()];
+            this.buff.get(receivedBytes);
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Receiving packet: {}", ByteFormatter.formatHexAsString(receivedBytes));
+            }
+
+            queue.add(new ChannelPacket(channel, receivedBytes));
         } catch (final IOException ioe) {
             LOG.error("Could not read the stream from channel: {}", channel, ioe);
+        } finally {
+            buff.clear();
         }
     }
 

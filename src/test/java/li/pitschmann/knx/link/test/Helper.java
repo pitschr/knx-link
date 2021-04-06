@@ -24,6 +24,8 @@ import li.pitschmann.knx.core.communication.KnxStatusPool;
 import li.pitschmann.knx.core.datapoint.value.DataPointValue;
 import li.pitschmann.knx.link.Action;
 import li.pitschmann.knx.link.ChannelPacket;
+import li.pitschmann.knx.link.SecurityAuditor;
+import li.pitschmann.knx.link.config.Config;
 
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
@@ -37,6 +39,28 @@ import static org.mockito.Mockito.when;
 public final class Helper {
 
     /**
+     * Create a mock {@link Config} that is suitable for testing purposes only.
+     * <p>
+     * The server port is always {@link Config#DEFAULT_SERVER_PORT} by default.
+     * The {@link SecurityAuditor#isRemoteAddressValid(SocketChannel)} returns always {@code true} by default.
+     *
+     * @return mocked {@link Config}
+     */
+    public static Config createConfigMock() {
+        final var configMock = mock(Config.class);
+
+        when(configMock.getServerPort()).thenReturn(Config.DEFAULT_SERVER_PORT);
+
+        final var securityAuditor = mock(SecurityAuditor.class);
+        when(securityAuditor.isRemoteAddressValid(any(SocketChannel.class))).thenReturn(true);
+        when(configMock.getSecurityAuditor()).thenReturn(securityAuditor);
+
+        when(configMock.getKnxClientConfig()).thenReturn(mock(li.pitschmann.knx.core.config.Config.class));
+
+        return configMock;
+    }
+
+    /**
      * Creates a mock {@link KnxClient} whereas the {@link KnxClient#readRequest(GroupAddress)}
      * and {@link KnxClient#writeRequest(GroupAddress, DataPointValue)} is simulated with {@code true}.
      *
@@ -44,6 +68,7 @@ public final class Helper {
      */
     public static KnxClient createKnxClientMock() {
         final var knxClientMock = mock(KnxClient.class);
+        when(knxClientMock.isRunning()).thenReturn(true);
         when(knxClientMock.readRequest(any(GroupAddress.class))).thenReturn(CompletableFuture.completedFuture(true));
         when(knxClientMock.writeRequest(any(GroupAddress.class), any(DataPointValue.class))).thenReturn(CompletableFuture.completedFuture(true));
         when(knxClientMock.getStatusPool()).thenReturn(mock(KnxStatusPool.class));

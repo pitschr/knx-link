@@ -1,6 +1,6 @@
 #!/bin/bash
 
-KNX_LINK_SERVER_PORT=10222
+KNX_LINK_SERVER_PORT=3672
 
 ##
 ## Minimum Requirement Check

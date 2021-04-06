@@ -49,16 +49,21 @@ public final class ServerWorker {
             try {
                 channel.write(bb);
                 if (LOG.isDebugEnabled()) {
-                    LOG.debug("Written to channel ({}): {}", channel, StandardCharsets.UTF_8.decode(bb));
+                    LOG.debug("Written to channel ({}): {}", channel, StandardCharsets.UTF_8.decode(bb.duplicate()));
                 }
             } catch (final IOException e) {
                 LOG.error("I/O Exception during replying to channel: {}", channel, e);
             }
         } else {
-            LOG.warn("The channel ({}) seems not be open anymore and could not respond: {}", channel, StandardCharsets.UTF_8.decode(bb));
+            LOG.warn("The channel ({}) seems not be open anymore and could not respond: {}", channel, StandardCharsets.UTF_8.decode(bb.duplicate()));
         }
     }
 
+    /**
+     * Reads and executes the command sequence specified in the {@link ChannelPacket}
+     *
+     * @param packet the channel packet that contains data from client; may not be null
+     */
     public void execute(final ChannelPacket packet) {
         final var bytes = packet.getBytes();
         Preconditions.checkArgument(bytes != null && bytes.length > 0, "Bytes is required.");
@@ -98,7 +103,7 @@ public final class ServerWorker {
 
                     writeToChannel(channel, statusAsBytes);
 
-                    // only look up in status pool when read request was successful
+                    // only look-up in status pool when read request was successful
                     if (b) {
                         final var dpt = readRequest.getDataPointType();
                         final var dpv = knxClient.getStatusPool().getValue(groupAddress, dpt);

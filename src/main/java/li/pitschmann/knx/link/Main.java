@@ -17,10 +17,12 @@
 
 package li.pitschmann.knx.link;
 
-import li.pitschmann.knx.core.communication.DefaultKnxClient;
 import li.pitschmann.knx.core.utils.Sleeper;
+import li.pitschmann.knx.link.config.ConfigReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.nio.file.Paths;
 
 /**
  * The main class to start the KNX Link Server
@@ -30,23 +32,16 @@ public class Main {
 
     public static void main(String[] args) {
 
-        // TODO:
-        // 1: Find server.cfg
-        // 2: Load and parses server.cfg and create an immutable ServerConfig instance
-        //       Validations:
-        //       'nat' only available for tunneling
-        //       'address': multicast address available for routing only, rest for tunneling
-        //       'address': must be in (byte).(byte).(byte).(byte) format -> see: li.pitschmann.knx.core.utils.Networker.getByAddress(java.lang.String)
-        //       'port': 1024 - 65535
-        // 3: Prepare Config for KNX Client based on ServerConfig
-        // 4: Start KNX Client, Accepting the Client connections
+        final var serverConfigPath = Paths.get("./server.cfg");
+        final var config = ConfigReader.load(serverConfigPath);
 
-        try (final var knxClient = DefaultKnxClient.createStarted();
-             final var server = Server.createStarted(knxClient)) {
-            while (knxClient.isRunning() && server.isRunning()) {
-                Sleeper.seconds(10);
+        try (final var server = Server.createStarted(config)) {
+            LOG.info("KNX Link Server started");
+            while (server.isRunning()) {
+                Sleeper.seconds(5);
             }
-            LOG.debug("Status: KnxClient={}, Server={}", knxClient.isRunning(), server.isRunning());
+        } finally {
+            LOG.info("KNX Link Server stopped");
         }
     }
 
