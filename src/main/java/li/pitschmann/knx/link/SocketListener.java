@@ -35,17 +35,17 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
- * Communicator for {@link Server}. Accepts channel and reads bytes
+ * TCP socket listener for {@link Server}. Accepts channel and reads bytes
  * from channel. The read bytes are added to {@link BlockingQueue}
  * as a {@link ChannelPacket}.
  */
-public final class ServerCommunicator implements Runnable {
-    private static final Logger LOG = LoggerFactory.getLogger(ServerCommunicator.class);
+public final class SocketListener implements Runnable {
+    private static final Logger LOG = LoggerFactory.getLogger(SocketListener.class);
     private final Config config;
     private final ByteBuffer buff = ByteBuffer.allocate(512);
     private final BlockingQueue<ChannelPacket> queue = new LinkedBlockingQueue<>();
 
-    ServerCommunicator(final Config config) {
+    SocketListener(final Config config) {
         this.config = Objects.requireNonNull(config);
     }
 
@@ -148,6 +148,7 @@ public final class ServerCommunicator implements Runnable {
 
             if (read < 0) {
                 key.cancel();
+                key.channel().close();
                 LOG.debug("Client says bye! {}", channel.getRemoteAddress());
                 return;
             } else {

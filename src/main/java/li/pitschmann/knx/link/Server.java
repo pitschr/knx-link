@@ -110,20 +110,19 @@ public final class Server implements Runnable, AutoCloseable {
         }
 
         LOG.trace("*** START ***");
-
         try (final var knxClient = getKnxClient()) {
 
-            final var serverCommunicator = new ServerCommunicator(config);
-            executorService.submit(serverCommunicator);
+            final var socketListener = new SocketListener(config);
+            executorService.submit(socketListener);
 
-            final var serverWorker = new ServerWorker(knxClient);
+            final var socketWorker = new SocketWorker(knxClient);
 
             while (!Thread.currentThread().isInterrupted() && knxClient.isRunning()) {
-                final var packet = serverCommunicator.nextPacket();
+                final var packet = socketListener.nextPacket();
                 try {
-                    serverWorker.execute(packet);
+                    socketWorker.execute(packet);
                 } catch (final Exception e) {
-                    LOG.error("An exception happened inside the worker", e);
+                    LOG.error("An exception happened inside the worker for packet: {}", packet, e);
                 }
             }
 

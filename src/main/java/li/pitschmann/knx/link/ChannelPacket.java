@@ -17,6 +17,9 @@
 
 package li.pitschmann.knx.link;
 
+import li.pitschmann.knx.core.utils.ByteFormatter;
+import li.pitschmann.knx.core.utils.Strings;
+
 import java.nio.channels.SocketChannel;
 import java.util.Objects;
 
@@ -53,5 +56,13 @@ public final class ChannelPacket {
      */
     public byte[] getBytes() {
         return bytes.clone();
+    }
+
+    @Override
+    public String toString() {
+        return Strings.toStringHelper(this)
+                .add("channel", channel)
+                .add("bytes", ByteFormatter.formatHexAsString(bytes))
+                .toString();
     }
 }

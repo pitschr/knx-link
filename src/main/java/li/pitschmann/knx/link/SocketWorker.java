@@ -36,11 +36,11 @@ import java.util.Objects;
 /**
  * Worker for Server
  */
-public final class ServerWorker {
-    private static final Logger LOG = LoggerFactory.getLogger(ServerWorker.class);
+public final class SocketWorker {
+    private static final Logger LOG = LoggerFactory.getLogger(SocketWorker.class);
     private final KnxClient knxClient;
 
-    ServerWorker(final KnxClient knxClient) {
+    SocketWorker(final KnxClient knxClient) {
         this.knxClient = Objects.requireNonNull(knxClient);
     }
 

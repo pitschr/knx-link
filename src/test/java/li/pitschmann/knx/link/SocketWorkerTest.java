@@ -44,32 +44,32 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Test for {@link ServerWorker}
+ * Test for {@link SocketWorker}
  */
-class ServerWorkerTest {
+class SocketWorkerTest {
 
     @Test
-    @DisplayName("Server Worker without Knx Client")
+    @DisplayName("Worker without Knx Client")
     void test_NoKnxClient() {
-        assertThatThrownBy(() -> new ServerWorker(null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> new SocketWorker(null)).isInstanceOf(NullPointerException.class);
     }
 
     @Test
     @DisplayName("#execute(ChannelPacket) with NULL")
     void test_execute_Null() {
-        final var serverWorker = new ServerWorker(createKnxClientMock());
-        assertThatThrownBy(() -> serverWorker.execute(null)).isInstanceOf(NullPointerException.class);
+        final var worker = new SocketWorker(createKnxClientMock());
+        assertThatThrownBy(() -> worker.execute(null)).isInstanceOf(NullPointerException.class);
     }
 
     @Test
     @DisplayName("#execute(ChannelPacket) without bytes")
     void test_execute_NullBytes() {
-        final var serverWorker = new ServerWorker(createKnxClientMock());
+        final var worker = new SocketWorker(createKnxClientMock());
 
         final var channelPacketMock = mock(ChannelPacket.class);
         when(channelPacketMock.getBytes()).thenReturn(null);
 
-        assertThatThrownBy(() -> serverWorker.execute(channelPacketMock))
+        assertThatThrownBy(() -> worker.execute(channelPacketMock))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Bytes is required.");
     }
@@ -77,12 +77,12 @@ class ServerWorkerTest {
     @Test
     @DisplayName("#execute(ChannelPacket) with empty bytes")
     void test_execute_EmptyBytes() {
-        final var serverWorker = new ServerWorker(createKnxClientMock());
+        final var worker = new SocketWorker(createKnxClientMock());
 
         final var channelPacketMock = mock(ChannelPacket.class);
         when(channelPacketMock.getBytes()).thenReturn(new byte[0]);
 
-        assertThatThrownBy(() -> serverWorker.execute(channelPacketMock))
+        assertThatThrownBy(() -> worker.execute(channelPacketMock))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Bytes is required.");
     }
@@ -90,12 +90,12 @@ class ServerWorkerTest {
     @Test
     @DisplayName("#execute(ChannelPacket) with unsupported protocol version")
     void test_execute_UnsupportedProtocolVersion() {
-        final var serverWorker = new ServerWorker(createKnxClientMock());
+        final var worker = new SocketWorker(createKnxClientMock());
 
         final var channelPacketMock = mock(ChannelPacket.class);
         when(channelPacketMock.getBytes()).thenReturn(new byte[]{(byte) 0xFF, 0x00});
 
-        assertThatThrownBy(() -> serverWorker.execute(channelPacketMock))
+        assertThatThrownBy(() -> worker.execute(channelPacketMock))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Protocol Version '255' is not supported: 0xFF 00");
     }
@@ -103,12 +103,12 @@ class ServerWorkerTest {
     @Test
     @DisplayName("#execute(ChannelPacket) with unsupported action")
     void test_execute_UnsupportedAction() {
-        final var serverWorker = new ServerWorker(createKnxClientMock());
+        final var worker = new SocketWorker(createKnxClientMock());
 
         final var channelPacketMock = mock(ChannelPacket.class);
         when(channelPacketMock.getBytes()).thenReturn(new byte[]{0x01, (byte) 0xFF});
 
-        assertThatThrownBy(() -> serverWorker.execute(channelPacketMock))
+        assertThatThrownBy(() -> worker.execute(channelPacketMock))
                 .isInstanceOf(KnxEnumNotFoundException.class);
     }
 
@@ -123,8 +123,8 @@ class ServerWorkerTest {
                 Helper.createProtocolV1Packet(Action.READ_REQUEST, "1/2/3", "7.600", null)
         );
 
-        final var serverWorker = new ServerWorker(knxClientMock);
-        serverWorker.execute(channelPacketMock);
+        final var worker = new SocketWorker(knxClientMock);
+        worker.execute(channelPacketMock);
 
         final var argCaptor = ArgumentCaptor.forClass(ByteBuffer.class);
         verify(channelPacketMock.getChannel(), timeout(5000).times(2)).write(argCaptor.capture());
@@ -143,8 +143,8 @@ class ServerWorkerTest {
                 Helper.createProtocolV1Packet(Action.READ_REQUEST, "1/2/3", "7.600", null)
         );
 
-        final var serverWorker = new ServerWorker(knxClientMock);
-        serverWorker.execute(channelPacketMock);
+        final var worker = new SocketWorker(knxClientMock);
+        worker.execute(channelPacketMock);
 
         verify(channelPacketMock.getChannel(), timeout(5000)).write(any(ByteBuffer.class));
     }
@@ -158,8 +158,8 @@ class ServerWorkerTest {
         final var channelMock = channelPacketMock.getChannel();
         when(channelMock.isConnected()).thenReturn(false); // HERE: not connected!
 
-        final var serverWorker = new ServerWorker(createKnxClientMock());
-        serverWorker.execute(channelPacketMock);
+        final var worker = new SocketWorker(createKnxClientMock());
+        worker.execute(channelPacketMock);
 
         verify(channelMock, never()).write(any(ByteBuffer.class));
     }
@@ -173,8 +173,8 @@ class ServerWorkerTest {
         final var channelMock = channelPacketMock.getChannel();
         doThrow(new IOException()).when(channelMock).write(any(ByteBuffer.class)); // HERE: I/O Exception!
 
-        final var serverWorker = new ServerWorker(createKnxClientMock());
-        serverWorker.execute(channelPacketMock);
+        final var worker = new SocketWorker(createKnxClientMock());
+        worker.execute(channelPacketMock); // should be fine, we silently ignore I/O
     }
 
     @Test
@@ -184,8 +184,8 @@ class ServerWorkerTest {
                 Helper.createProtocolV1Packet(Action.WRITE_REQUEST, "1/2/3", "7.600", new String[]{"4711"})
         );
 
-        final var serverWorker = new ServerWorker(createKnxClientMock());
-        serverWorker.execute(channelPacketMock);
+        final var worker = new SocketWorker(createKnxClientMock());
+        worker.execute(channelPacketMock);
 
         final var argCaptor = ArgumentCaptor.forClass(ByteBuffer.class);
         verify(channelPacketMock.getChannel(), timeout(5000)).write(argCaptor.capture());
