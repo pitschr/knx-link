@@ -17,6 +17,10 @@
 
 package li.pitschmann.knx.link.config;
 
+/**
+ * Customized exception in case there was a configuration
+ * issue
+ */
 public final class ConfigException extends RuntimeException {
     public ConfigException(final String message) {
         super(message);

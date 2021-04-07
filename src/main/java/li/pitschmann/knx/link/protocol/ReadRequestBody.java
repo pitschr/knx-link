@@ -55,7 +55,7 @@ import li.pitschmann.knx.link.protocol.helpers.ProtocolHelper;
  * @author PITSCHR
  */
 public final class ReadRequestBody {
-    protected static final int STRUCTURE_LENGTH = 6;
+    private static final int STRUCTURE_LENGTH = 6;
     private final GroupAddress groupAddress;
     private final DataPointType dataPointType;
 

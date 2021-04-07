@@ -122,14 +122,6 @@ class ServerWorkerTest {
         final var channelPacketMock = createChannelPacketMock(
                 Helper.createProtocolV1Packet(Action.READ_REQUEST, "1/2/3", "7.600", null)
         );
-//        final var channelMock = mock(SocketChannel.class);
-//        when(channelMock.isConnected()).thenReturn(true);
-//
-//        final var channelPacketMock = mock(ChannelPacket.class);
-//        when(channelPacketMock.getChannel()).thenReturn(channelMock);
-//        when(channelPacketMock.getBytes()).thenReturn(
-//                Helper.createProtocolV1Packet(Action.READ_REQUEST, "1/2/3", "7.600", null)
-//        );
 
         final var serverWorker = new ServerWorker(knxClientMock);
         serverWorker.execute(channelPacketMock);
@@ -150,14 +142,6 @@ class ServerWorkerTest {
         final var channelPacketMock = createChannelPacketMock(
                 Helper.createProtocolV1Packet(Action.READ_REQUEST, "1/2/3", "7.600", null)
         );
-//        final var channelMock = mock(SocketChannel.class);
-//        when(channelMock.isConnected()).thenReturn(true);
-//
-//        final var channelPacketMock = mock(ChannelPacket.class);
-//        when(channelPacketMock.getChannel()).thenReturn(channelMock);
-//        when(channelPacketMock.getBytes()).thenReturn(
-//                Helper.createProtocolV1Packet(Action.READ_REQUEST, "1/2/3", "7.600", null)
-//        );
 
         final var serverWorker = new ServerWorker(knxClientMock);
         serverWorker.execute(channelPacketMock);

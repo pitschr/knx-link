@@ -39,7 +39,6 @@ import li.pitschmann.knx.link.Action;
  * @author PITSCHR
  */
 public final class Header {
-    public static final int STRUCTURE_LENGTH = 2;
     private final int version;
     private final Action action;
 
@@ -48,9 +47,8 @@ public final class Header {
         action = Action.of(Byte.toUnsignedInt(actionAsByte));
     }
 
-    public static Header of(final byte[] bytes) {
-        Preconditions.checkArgument(bytes.length == STRUCTURE_LENGTH);
-        return new Header(bytes[0], bytes[1]);
+    public static Header of(final byte byte1, final byte byte2) {
+        return new Header(byte1, byte2);
     }
 
     public int getVersion() {

@@ -19,7 +19,7 @@ package li.pitschmann.knx.link.config;
 
 /**
  * Returns the mode of KNX communication between
- * the server and the KNX Net/IP device.
+ * the KNX Link Server and the KNX Net/IP device.
  */
 public enum KnxMode {
     TUNNELING("tunneling"),

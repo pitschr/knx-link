@@ -69,7 +69,7 @@ public final class ServerWorker {
         Preconditions.checkArgument(bytes != null && bytes.length > 0, "Bytes is required.");
 
         // Currently we only have Protocol V1 - so no special strategy implementation required
-        final var header = Header.of(new byte[]{bytes[0], bytes[1]});
+        final var header = Header.of(bytes[0], bytes[1]);
         Preconditions.checkArgument(header.getVersion() == 0x01,
                 "Protocol Version '{}' is not supported: {}", header.getVersion(), ByteFormatter.formatHexAsString(bytes));
 

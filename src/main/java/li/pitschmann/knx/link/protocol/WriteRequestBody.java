@@ -67,7 +67,7 @@ import java.util.Arrays;
  * @author PITSCHR
  */
 public final class WriteRequestBody {
-    public static final int MIN_STRUCTURE_LENGTH = 7;
+    private static final int MIN_STRUCTURE_LENGTH = 7;
     private final GroupAddress groupAddress;
     private final DataPointType dataPointType;
     private final String[] arguments;
