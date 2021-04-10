@@ -28,13 +28,14 @@ A demo application for KNX Core. Available as a container image (docker, podman)
 
 # KNX Link
 
-KNX Link comes with a **server** and a **client**. The KNX Link server establish a connection to your 
-KNX Net/IP device using the [knx-core](https://github.com/pitschr/knx-core) and acts as a KNX gateway.
+The KNX Link establish a connection to your KNX Net/IP device using the [knx-core](https://github.com/pitschr/knx-core) 
+and acts as a KNX gateway. KNX Link comes with a pair: **server** and **client**.
 
 The purpose of the KNX Link server and client is to allow you to send requests to KNX network with almost 
-no delay. The *KNX Link server* is running as a `systemd` service and keeps the connection with your KNX 
-Net/IP device and is taking care of the most heavy tasks while the *KNX Link client* is a light-weight 
-command-line tool with its short life cycle.
+no delay. The *KNX Link server* is running as a long-running `systemd` service and keeps the connection 
+with your KNX Net/IP device and is taking care of the heavy communication tasks while the *KNX Link client* 
+is a light-weight command-line tool with a short life cycle. The communication between the server and client
+is done via TCP socket as illustrated below.
 
 ![Architecture](./assets/readme_architecture.png)
 

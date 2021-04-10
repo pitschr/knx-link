@@ -17,8 +17,6 @@
 
 package li.pitschmann.knx.link.config;
 
-import li.pitschmann.knx.core.annotations.Nullable;
-import li.pitschmann.knx.core.config.CoreConfigs;
 import li.pitschmann.knx.core.utils.Networker;
 import li.pitschmann.knx.core.utils.Strings;
 import li.pitschmann.knx.link.SecurityAuditor;
@@ -59,7 +57,7 @@ public final class ConfigReader {
             try (final var fis = new FileInputStream(path.toFile())) {
                 properties.load(fis);
 
-                return new Config(
+                final var config = new Config(
                         getServerPort(properties),
                         getKnxMode(properties),
                         getKnxNatEnabled(properties),
@@ -67,6 +65,8 @@ public final class ConfigReader {
                         getKnxPort(properties),
                         getSecurityAuditor(properties)
                 );
+                LOG.info("Config loaded with: {}", config);
+                return config;
             } catch (IOException e) {
                 LOG.error("I/O Exception during reading configuration", e);
             }
@@ -118,13 +118,11 @@ public final class ConfigReader {
      * configuration key. Defaults to {@code null}
      *
      * @param properties the loaded properties; may not be null
-     * @return the {@link InetAddress} of KNX Net/IP device, {@code null}
-     * if no address is specified which uses the auto-discovery
+     * @return the {@link InetAddress} of KNX Net/IP device, unbound address to use the auto-discovery
      */
-    @Nullable
     private static InetAddress getKnxAddress(final Properties properties) {
         final var knxAddress = properties.getProperty("knx.address");
-        return Strings.isNullOrEmpty(knxAddress) ? null : Networker.getByAddress(knxAddress);
+        return Strings.isNullOrEmpty(knxAddress) ? Config.DEFAULT_KNX_ADDRESS : Networker.getByAddress(knxAddress);
     }
 
     /**
@@ -136,7 +134,7 @@ public final class ConfigReader {
      */
     private static int getKnxPort(final Properties properties) {
         final var knxPort = properties.getProperty("knx.port");
-        return Strings.isNullOrEmpty(knxPort) ? CoreConfigs.KNX_PORT : Integer.parseInt(knxPort);
+        return Strings.isNullOrEmpty(knxPort) ? Config.DEFAULT_KNX_PORT : Integer.parseInt(knxPort);
     }
 
     /**
@@ -149,7 +147,7 @@ public final class ConfigReader {
     private static SecurityAuditor getSecurityAuditor(final Properties properties) {
         final var allowedAddresses = properties.getProperty("server.allowed.addresses", "").trim();
         if (Strings.isNullOrEmpty(allowedAddresses)) {
-            return new SecurityAuditor();
+            return new SecurityAuditor(Config.DEFAULT_SERVER_ALLOWED_ADDRESSES);
         } else {
             final var securityClientsAsArray = allowedAddresses.trim().split("\\s*,\\s*");
             return new SecurityAuditor(Set.of(securityClientsAsArray));

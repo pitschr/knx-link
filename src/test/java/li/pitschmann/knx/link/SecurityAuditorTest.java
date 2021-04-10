@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -37,7 +38,7 @@ class SecurityAuditorTest {
     @Test
     @DisplayName("#isRemoteAddressValid(SocketChannel): 127.0.0.1, in whitelist")
     void test_remoteAddress_127_0_0_1() throws IOException {
-        final var guarder = new SecurityAuditor();
+        final var auditor = new SecurityAuditor(Set.of("127.0.0.1"));
 
         final var socketChannelMock = mock(SocketChannel.class);
         final var socketAddressMock = mock(InetSocketAddress.class);
@@ -47,13 +48,13 @@ class SecurityAuditorTest {
         when(socketAddressMock.getAddress()).thenReturn(inetAddressMock);
         when(inetAddressMock.getHostAddress()).thenReturn("127.0.0.1");
 
-        assertThat(guarder.isRemoteAddressValid(socketChannelMock)).isTrue();
+        assertThat(auditor.isRemoteAddressValid(socketChannelMock)).isTrue();
     }
 
     @Test
     @DisplayName("#isRemoteAddressValid(SocketChannel): 10.0.0.1, not in whitelist")
     void test_remoteAddress_10_0_0_1() throws IOException {
-        final var guarder = new SecurityAuditor();
+        final var auditor = new SecurityAuditor(Set.of("127.0.0.1"));
 
         final var socketChannelMock = mock(SocketChannel.class);
         final var socketAddressMock = mock(InetSocketAddress.class);
@@ -63,17 +64,27 @@ class SecurityAuditorTest {
         when(socketAddressMock.getAddress()).thenReturn(inetAddressMock);
         when(inetAddressMock.getHostAddress()).thenReturn("10.0.0.1");
 
-        assertThat(guarder.isRemoteAddressValid(socketChannelMock)).isFalse();
+        assertThat(auditor.isRemoteAddressValid(socketChannelMock)).isFalse();
     }
 
     @Test
     @DisplayName("#isRemoteAddressValid(SocketChannel): IOException")
     void test_remoteAddress_IOException() throws IOException {
-        final var guarder = new SecurityAuditor();
+        final var auditor = new SecurityAuditor(Set.of());
 
         final var socketChannelMock = mock(SocketChannel.class);
         when(socketChannelMock.getRemoteAddress()).thenThrow(new IOException());
 
-        assertThat(guarder.isRemoteAddressValid(socketChannelMock)).isFalse();
+        assertThat(auditor.isRemoteAddressValid(socketChannelMock)).isFalse();
+    }
+
+    @Test
+    @DisplayName("#toString()")
+    void testToString() {
+        final var auditor = new SecurityAuditor(Set.of("1.2.3.4"));
+
+        assertThat(auditor).hasToString(
+                "SecurityAuditor{allowedAddresses=[1.2.3.4]}"
+        );
     }
 }

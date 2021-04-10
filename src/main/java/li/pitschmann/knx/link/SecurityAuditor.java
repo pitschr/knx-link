@@ -17,6 +17,7 @@
 
 package li.pitschmann.knx.link;
 
+import li.pitschmann.knx.core.utils.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,16 +33,11 @@ import java.util.Set;
  */
 public final class SecurityAuditor {
     private static final Logger LOG = LoggerFactory.getLogger(SecurityAuditor.class);
-    private static final Set<String> DEFAULT_ALLOWED_ADDRESSES = Set.of("127.0.0.1");
     private final Set<String> allowedAddresses;
-
-    public SecurityAuditor() {
-        this(DEFAULT_ALLOWED_ADDRESSES);
-    }
 
     public SecurityAuditor(final Set<String> allowedAddresses) {
         this.allowedAddresses = Set.copyOf(allowedAddresses);
-        LOG.info("Allowed addresses: {}", this.allowedAddresses);
+        LOG.info("Instantiate with allowed addresses: {}", this.allowedAddresses);
     }
 
     /**
@@ -57,7 +53,7 @@ public final class SecurityAuditor {
     /**
      * Checks if the {@link SocketChannel} is coming from a valid remote address.
      * The remote address from {@link SocketChannel} will be compared against the
-     * {@link #DEFAULT_ALLOWED_ADDRESSES}.
+     * {@link #allowedAddresses}.
      *
      * <p> If the remote address could not be read for any reasons
      * (e.g. due {@link IOException}), then {@code false} is returned.
@@ -82,5 +78,12 @@ public final class SecurityAuditor {
             LOG.error("Could not validate the IP address of socket channel: {}", socketChannel, e);
         }
         return false;
+    }
+
+    @Override
+    public String toString() {
+        return Strings.toStringHelper(this)
+                .add("allowedAddresses", allowedAddresses)
+                .toString();
     }
 }

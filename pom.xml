@@ -172,7 +172,7 @@
                         <configuration>
                             <archive>
                                 <manifest>
-                                    <mainClass>li.pitschmann.knx.link.UdpDaemonServer</mainClass>
+                                    <mainClass>li.pitschmann.knx.link.Main</mainClass>
                                 </manifest>
                             </archive>
                             <descriptorRefs>

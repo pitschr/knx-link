@@ -18,10 +18,12 @@
 package li.pitschmann.knx.link;
 
 import li.pitschmann.knx.core.utils.Sleeper;
+import li.pitschmann.knx.link.config.Config;
 import li.pitschmann.knx.link.config.ConfigReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.file.Files;
 import java.nio.file.Paths;
 
 /**
@@ -31,10 +33,19 @@ public class Main {
     private static final Logger LOG = LoggerFactory.getLogger(Main.class);
 
     public static void main(String[] args) {
+        // load config from 'server.cfg' file, if not readable fall back to default one
+        final var serverConfigPath = Paths.get("server.cfg");
+        final Config config;
+        if (Files.isReadable(serverConfigPath)) {
+            LOG.info("Config file found at: {}", serverConfigPath.toAbsolutePath());
+            config = ConfigReader.load(serverConfigPath);
+        } else {
+            LOG.info("Fall back to default config. No Config file found at: {}", serverConfigPath.toAbsolutePath());
+            config = Config.useDefault();
+        }
 
-        final var serverConfigPath = Paths.get("./server.cfg");
-        final var config = ConfigReader.load(serverConfigPath);
-
+        // start the KNX Link server and try to keep it alive forever
+        // in case of issue, the restart will be done by the systemd
         try (final var server = Server.createStarted(config)) {
             LOG.info("KNX Link Server started");
             while (server.isRunning()) {

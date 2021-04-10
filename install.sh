@@ -38,10 +38,10 @@ if [[ -z "$(type -p systemctl)" ]]; then
   exit 1
 fi
 
-# Select the latest file
-DOWNLOAD_FILE="$(curl -s https://api.github.com/repos/pitschr/knx-core/releases/latest | fgrep "tag_name" | cut -d\" -f4).jar"
-if [[ -z "$DOWNLOAD_FILE" ]]; then
-  echo "[ERROR] Could not fetch the latest file from GitHub. Please contact the maintainer."
+# Select the latest tag name
+KNX_LINK_LATEST_TAG_NAME=$(curl -s https://api.github.com/repos/pitschr/knx-link/releases/latest | fgrep "tag_name" | cut -d\" -f4)
+if [[ ! $KNX_LINK_LATEST_TAG_NAME =~ "knx-link-\d+\.\d+\.\d+" ]]; then
+  echo "[ERROR] Could not fetch the latest tag name from GitHub. Please contact the maintainer."
   exit 2
 fi
 
@@ -70,8 +70,25 @@ fi
 ##
 ## Download 'jar' file from GitHub
 ##
-echo -n "Download file '$DOWNLOAD_FILE' ... "
-curl -s -o "/usr/local/bin/knx-link-server.jar" "https://github.com/pitschr/knx-core/archive/refs/tags/$DOWNLOAD_FILE"
+KNX_LINK_FOLDER="/opt/$KNX_LINK_LATEST_TAG_NAME"
+KNX_LINK_SERVER_JAR="$KNX_LINK_FOLDER/server.jar"
+echo -n "Download file '${KNX_LINK_LATEST_TAG_NAME}.jar' to '$KNX_LINK_SERVER_JAR' ... "
+mkdir "$KNX_LINK_FOLDER"
+if [[ ! -d "$KNX_LINK_FOLDER" ]]; then
+  echo "[ERROR] Could not create folder '$KNX_LINK_FOLDER'. Please check your permission."
+  exit 5
+fi 
+DOWNLOAD_URL="https://github.com/pitschr/knx-link/archive/refs/tags/${KNX_LINK_LATEST_TAG_NAME}/${KNX_LINK_LATEST_TAG_NAME}.jar"
+curl -s -o "$KNX_LINK_SERVER_JAR" "$DOWNLOAD_URL"
+if [[ ! -f "$KNX_LINK_SERVER_JAR" ]]; then
+  echo "[ERROR] File could not be downloaded from '$DOWNLOAD_URL' to '$KNX_LINK_SERVER_JAR'. Please contact the maintainer."
+  exit 5
+fi
+chown -R knx:knx "$KNX_LINK_FOLDER"
+if [[ $? -ne 0 ]]; then
+  echo "[ERROR] Could not change the ownership of folder '$KNX_LINK_FOLDER' for user 'knx'."
+  exit 5
+fi
 echo "DONE"
 
 ##
@@ -91,9 +108,9 @@ if [[ -f "$SYSTEMD_SERVICE_KNX" ]]; then
 fi
 
 echo -n "Installing systemd 'knx.service' ... "
-cat << 'EOF' > "$SYSTEMD_SERVICE_KNX"
+cat << EOF > "$SYSTEMD_SERVICE_KNX"
 [Unit]
-Description=KNX Service
+Description=KNX Link Service
 After=network.target
 
 [Service]
@@ -101,8 +118,8 @@ Type=simple
 Restart=always
 RestartSec=3
 User=knx
-WorkingDirectory=/usr/local/bin
-ExecStart=sleep 10
+WorkingDirectory=$KNX_LINK_FOLDER
+ExecStart=java -jar "$KNX_LINK_SERVER_JAR"
 
 [Install]
 WantedBy=multi-user.target
