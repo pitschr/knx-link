@@ -26,42 +26,42 @@ import org.slf4j.LoggerFactory;
 import java.util.Scanner;
 
 /**
- * This is *NOT* a Unit Test and used for development purposes only
+ * Test Client for testing manual testing only
  */
-public class SocketClientMainTest {
+public class TestClientMain {
     static {
         ((Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME)).setLevel(Level.OFF);
     }
 
     private static void printHelp() {
-        System.out.println(
+        System.out.println("" +
                 "---------------------------------------------------" + System.lineSeparator() +
-                        "Pre-defined Actions:" + System.lineSeparator() +
-                        "---------------------------------------------------" + System.lineSeparator() +
-                        "1) 1/2/150 1.001 On                       [WRITE]" + System.lineSeparator() +
-                        "2) 1/2/150 1.001 Off                      [WRITE]" + System.lineSeparator() +
-                        "3) 1/2/152 5.001 10                       [WRITE]" + System.lineSeparator() +
-                        "4) 1/2/152 5.001 50                       [WRITE]" + System.lineSeparator() +
-                        System.lineSeparator() +
-                        "5) 1/2/110 1.001 On                       [WRITE]" + System.lineSeparator() +
-                        "6) 1/2/110 1.001 Off                      [WRITE]" + System.lineSeparator() +
-                        "7) 1/2/113 1.001                          [READ]" + System.lineSeparator() +
-                        "8) 1/2/113 99.999                         [READ/RAW]" + System.lineSeparator() +
-                        System.lineSeparator() +
-                        "9) 11/3/15 14.056                         [READ]" + System.lineSeparator() +
-                        "10) 11/3/15 99.999                        [READ/RAW]" + System.lineSeparator() +
-                        System.lineSeparator() +
-                        "11) 11/3/10 9.021                         [READ]" + System.lineSeparator() +
-                        "12) 11/3/0 9.001                          [READ]" + System.lineSeparator() +
+                "Pre-defined Actions:" + System.lineSeparator() +
+                "---------------------------------------------------" + System.lineSeparator() +
+                "1) 1/2/150 1.001 On                       [WRITE]" + System.lineSeparator() +
+                "2) 1/2/150 1.001 Off                      [WRITE]" + System.lineSeparator() +
+                "3) 1/2/152 5.001 10                       [WRITE]" + System.lineSeparator() +
+                "4) 1/2/152 5.001 50                       [WRITE]" + System.lineSeparator() +
+                System.lineSeparator() +
+                "5) 1/2/110 1.001 On                       [WRITE]" + System.lineSeparator() +
+                "6) 1/2/110 1.001 Off                      [WRITE]" + System.lineSeparator() +
+                "7) 1/2/113 1.001                          [READ]" + System.lineSeparator() +
+                "8) 1/2/113 99.999                         [READ/RAW]" + System.lineSeparator() +
+                System.lineSeparator() +
+                "9) 11/3/15 14.056                         [READ]" + System.lineSeparator() +
+                "10) 11/3/15 99.999                        [READ/RAW]" + System.lineSeparator() +
+                System.lineSeparator() +
+                "11) 11/3/10 9.021                         [READ]" + System.lineSeparator() +
+                "12) 11/3/0 9.001                          [READ]" + System.lineSeparator() +
 
-                        "0) Quit" + System.lineSeparator() +
-                        "---------------------------------------------------");
+                "0) Quit" + System.lineSeparator() +
+                "---------------------------------------------------");
     }
 
     public static void main(String[] args) {
         printHelp();
         final var scanner = new Scanner(System.in);
-        try (final var client = SocketClient.createStarted(Config.DEFAULT_SERVER_PORT)) {
+        try (final var client = TestClient.createStarted(Config.DEFAULT_SERVER_PORT)) {
             loop:
             while (true) {
                 Sleeper.seconds(1);

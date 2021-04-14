@@ -46,7 +46,7 @@ public class Main {
 
         // start the KNX Link server and try to keep it alive forever
         // in case of issue, the restart will be done by the systemd
-        try (final var server = Server.createStarted(config)) {
+        try (final var server = DefaultServer.createStarted(config)) {
             LOG.info("KNX Link Server started");
             while (server.isRunning()) {
                 Sleeper.seconds(5);

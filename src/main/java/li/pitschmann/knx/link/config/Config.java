@@ -62,14 +62,6 @@ public final class Config {
         this.securityAuditor = securityAuditor;
     }
 
-    public SecurityAuditor getSecurityAuditor() {
-        return securityAuditor;
-    }
-
-    public int getServerPort() {
-        return serverPort;
-    }
-
     public static final Config useDefault() {
         return new Config(
                 DEFAULT_SERVER_PORT,
@@ -79,6 +71,14 @@ public final class Config {
                 DEFAULT_KNX_PORT,
                 new SecurityAuditor(DEFAULT_SERVER_ALLOWED_ADDRESSES)
         );
+    }
+
+    public SecurityAuditor getSecurityAuditor() {
+        return securityAuditor;
+    }
+
+    public int getServerPort() {
+        return serverPort;
     }
 
     /**
@@ -117,11 +117,11 @@ public final class Config {
     public String toString() {
         return Strings.toStringHelper(this)
                 .add("knxMode", knxMode.name())
-                .add("knxNatEnabled",  knxNatEnabled)
-                .add("knxAddress",  knxAddress.getHostAddress())
-                .add("knxPort",  knxPort)
-                .add("serverPort",  serverPort)
-                .add("securityAuditor",  securityAuditor)
+                .add("knxNatEnabled", knxNatEnabled)
+                .add("knxAddress", knxAddress.getHostAddress())
+                .add("knxPort", knxPort)
+                .add("serverPort", serverPort)
+                .add("securityAuditor", securityAuditor)
                 .toString();
     }
 }

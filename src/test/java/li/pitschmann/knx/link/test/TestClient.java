@@ -41,34 +41,34 @@ import java.util.concurrent.Executors;
 /**
  * Test Socket Client for communication tests
  */
-public final class SocketClient implements AutoCloseable {
-    private static final Logger LOG = LoggerFactory.getLogger(SocketClient.class);
+public final class TestClient implements AutoCloseable {
+    private static final Logger LOG = LoggerFactory.getLogger(TestClient.class);
     private final int serverPort;
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
     private final List<String> receivedStrings = new ArrayList<>();
     private Selector writeSelector;
     private Selector readSelector;
 
-    private SocketClient(final int serverPort) {
+    private TestClient(final int serverPort) {
         this.serverPort = serverPort;
     }
 
     /**
-     * Creates a new {@link SocketClient} listening to the {@code serverPort}.
+     * Creates a new {@link TestClient} listening to the {@code serverPort}.
      * For the client a random free port will be used.
      *
      * @param serverPort the port of server
-     * @return a new instance of {@link SocketClient}
+     * @return a new instance of {@link TestClient}
      */
-    public static SocketClient createStarted(final int serverPort) {
-        final var client = new SocketClient(serverPort);
+    public static TestClient createStarted(final int serverPort) {
+        final var client = new TestClient(serverPort);
         client.start();
         return client;
     }
 
     /**
      * Verifies if the {@code expectedReceivedStrings} has been received by
-     * the current {@link SocketClient} within 5 hardcoded-second timeout.
+     * the current {@link TestClient} within 5 hardcoded-second timeout.
      *
      * @param expectedReceivedStrings expected strings to be received; may be empty
      * @throws AssertionError in case there was a mismatch or timeout occurred first

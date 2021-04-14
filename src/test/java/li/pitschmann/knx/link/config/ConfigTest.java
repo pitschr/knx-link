@@ -64,7 +64,7 @@ class ConfigTest {
                 1234,
                 KnxMode.ROUTING,
                 false,
-                Networker.getByAddress(224,6,7,8),
+                Networker.getByAddress(224, 6, 7, 8),
                 9123,
                 new SecurityAuditor(Set.of("10.0.1.2"))
         );
@@ -75,7 +75,7 @@ class ConfigTest {
         final var knxConfig = config.getKnxClientConfig();
         assertThat(knxConfig.isRoutingEnabled()).isTrue();
         assertThat(knxConfig.isNatEnabled()).isFalse();
-        assertThat(knxConfig.getRemoteControlAddress().getAddress()).containsExactly(224,6,7,8);
+        assertThat(knxConfig.getRemoteControlAddress().getAddress()).containsExactly(224, 6, 7, 8);
         assertThat(knxConfig.getRemoteControlPort()).isEqualTo(9123);
 
         assertThat(config).hasToString(

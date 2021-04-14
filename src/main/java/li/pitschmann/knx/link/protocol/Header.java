@@ -17,7 +17,6 @@
 
 package li.pitschmann.knx.link.protocol;
 
-import li.pitschmann.knx.core.utils.Preconditions;
 import li.pitschmann.knx.link.Action;
 
 /**

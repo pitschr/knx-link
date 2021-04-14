@@ -17,7 +17,6 @@
 
 package li.pitschmann.knx.link;
 
-import li.pitschmann.knx.core.communication.DefaultKnxClient;
 import li.pitschmann.knx.core.communication.KnxClient;
 import li.pitschmann.knx.core.datapoint.DPT1;
 import li.pitschmann.knx.core.datapoint.DataPointRegistry;
@@ -39,27 +38,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * for requests and acts as a proxy between socket channel and the KNX
  * Net/IP device.
  */
-public final class Server implements Runnable, AutoCloseable {
-    private static final Logger LOG = LoggerFactory.getLogger(Server.class);
-    private final Config config;
+public abstract class AbstractServer implements Runnable, AutoCloseable {
+    private static final Logger LOG = LoggerFactory.getLogger(AbstractServer.class);
+    protected final Config config;
     private final ExecutorService executorService = Executors.newFixedThreadPool(2);
     private final AtomicBoolean running = new AtomicBoolean();
 
-    Server(final Config config) {
+    protected AbstractServer(final Config config) {
         this.config = Objects.requireNonNull(config);
         DataPointRegistry.getDataPointType(DPT1.SWITCH.getId()); // warm up!
-    }
-
-    /**
-     * Creates a new KNX Link Server and starts
-     *
-     * @param config the configuration; may not be null
-     * @return the KNX Link Server which has been started
-     */
-    public static Server createStarted(final Config config) {
-        final var server = new Server(config);
-        server.start();
-        return server;
     }
 
     /**
@@ -67,9 +54,7 @@ public final class Server implements Runnable, AutoCloseable {
      *
      * @return the {@link KnxClient}
      */
-    KnxClient getKnxClient() {
-        return DefaultKnxClient.createStarted(config.getKnxClientConfig());
-    }
+    protected abstract KnxClient getKnxClient();
 
     /**
      * Starts the KNX Link Server
@@ -111,7 +96,6 @@ public final class Server implements Runnable, AutoCloseable {
 
         LOG.trace("*** START ***");
         try (final var knxClient = getKnxClient()) {
-
             final var socketListener = new SocketListener(config);
             executorService.submit(socketListener);
 

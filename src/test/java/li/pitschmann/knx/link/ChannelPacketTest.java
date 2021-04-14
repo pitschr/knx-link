@@ -36,7 +36,7 @@ class ChannelPacketTest {
     void testGetChannelAndBytes() {
         final var channelMock = mock(SocketChannel.class);
 
-        final var packet = new ChannelPacket(channelMock, new byte[] { 0x34, 0x56 });
+        final var packet = new ChannelPacket(channelMock, new byte[]{0x34, 0x56});
         assertThat(packet.getChannel()).isSameAs(channelMock);
         assertThat(packet.getBytes()).containsExactly(0x34, 0x56);
     }
@@ -47,7 +47,7 @@ class ChannelPacketTest {
         final var channelMock = mock(SocketChannel.class);
         when(channelMock.toString()).thenReturn("CHANNEL-MOCK");
 
-        final var packet = new ChannelPacket(channelMock, new byte[]{ 0x01, 0x02, 0x03 });
+        final var packet = new ChannelPacket(channelMock, new byte[]{0x01, 0x02, 0x03});
         assertThat(packet).hasToString(
                 "ChannelPacket{channel=CHANNEL-MOCK, bytes=0x01 02 03}"
         );

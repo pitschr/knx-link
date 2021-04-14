@@ -35,7 +35,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
- * TCP socket listener for {@link Server}. Accepts channel and reads bytes
+ * TCP socket listener for {@link AbstractServer}. Accepts channel and reads bytes
  * from channel. The read bytes are added to {@link BlockingQueue}
  * as a {@link ChannelPacket}.
  */

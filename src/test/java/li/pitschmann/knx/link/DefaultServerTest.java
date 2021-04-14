@@ -29,7 +29,7 @@ import li.pitschmann.knx.core.datapoint.DPTRaw;
 import li.pitschmann.knx.core.datapoint.DataPointType;
 import li.pitschmann.knx.core.datapoint.value.DPT19Value;
 import li.pitschmann.knx.link.config.Config;
-import li.pitschmann.knx.link.test.SocketClient;
+import li.pitschmann.knx.link.test.TestClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -50,21 +50,21 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Test for {@link Server}
+ * Test for {@link DefaultServer}
  */
-class ServerTest {
-    private SocketClient client;
+class DefaultServerTest {
+    private TestClient client;
     private KnxClient knxClientMock;
-    private Server server;
+    private DefaultServer server;
 
     @BeforeEach
     void setUp() {
         knxClientMock = createKnxClientMock();
-        server = spy(new Server(createConfigMock()));
+        server = spy(DefaultServer.createUnstarted(createConfigMock()));
         // as we don't want to communicate with real KNX Net/IP device
         doReturn(knxClientMock).when(server).getKnxClient();
         server.start();
-        client = spy(SocketClient.createStarted(Config.DEFAULT_SERVER_PORT));
+        client = spy(TestClient.createStarted(Config.DEFAULT_SERVER_PORT));
     }
 
     @AfterEach
