@@ -29,16 +29,27 @@ pub struct Protocol;
 
 impl Protocol {
     pub fn as_bytes(header: Header, group_address: &str, datapoint: &str, values: Vec<&str>) -> Result<Vec<u8>, ProtocolError> {
-        let mut ve = Vec::<u8>::new();
-        ve.push(0x01); // protocol version
-        ve.push(header.action().value()); // action
+        let mut ve = Vec::<u8>::with_capacity(255);
+
+        // protocol version
+        ve.push(0x01);
+
+        // action (read, write)
+        ve.push(header.action().value());
+
+        // Group Address (2 bytes)
         for j in GroupAddress::try_from(group_address).unwrap().as_bytes().iter() {
             ve.push(*j);
         }
+
+        // Data Point (4 bytes)
         for i in DataPoint::try_from(datapoint).unwrap().as_bytes().iter() {
             ve.push(*i);
         }
 
+        // Values
+        // * Read = 0 bytes
+        // * Write = N bytes + 1 byte for termination NULL
         if let Action::WriteRequest = header.action() {
             for i in Protocol::convert_values_to_utf8_bytes(values).iter() {
                 ve.push(*i);
@@ -75,33 +86,39 @@ mod test {
 
     #[test]
     fn test_read_request() {
-        let dpt = Protocol::as_bytes(Header::new(Action::ReadRequest), "1/2/3", "4711.32109", vec![]).unwrap();
-        assert_eq!(dpt, [
-            0x01,                       // Protocol Version
-            0x00,                       // WriteRequest
-            0x0A, 0x03,                 // Group Address
-            0x12, 0x67, 0x7D, 0x6D      // Data Point Type
-        ]);
+        assert_eq!(Protocol::as_bytes(Header::new(Action::ReadRequest), "1/2/3", "4711.32109", vec![]).unwrap(),
+                   [
+                       0x01,                       // Protocol Version
+                       0x00,                       // Write Request
+                       0x0A, 0x03,                 // Group Address
+                       0x12, 0x67, 0x7D, 0x6D      // Data Point Type
+                   ]
+        );
     }
 
     #[test]
     fn test_write_request() {
-        let dpt = Protocol::as_bytes(Header::new(Action::WriteRequest), "1/2/3", "4711.32109", vec!["Hello", "World"]).unwrap();
-        assert_eq!(dpt, [
-            0x01,                                           // Protocol Version
-            0x01,                                           // WriteRequest
-            0x0A, 0x03,                                     // Group Address
-            0x12, 0x67, 0x7D, 0x6D,                         // Data Point Type
-            b'"', b'H', b'e', b'l', b'l', b'o', b'"',       // Values (within double-quote characters)
-            b' ',                                           // (Space)
-            b'"', b'W', b'o', b'r', b'l', b'd', b'"',       // Values, continued
-            0x00                                            // Termination NULL
-        ]);
+        assert_eq!(Protocol::as_bytes(Header::new(Action::WriteRequest), "1/2/3", "4711.32109", vec!["Hello", "World"]).unwrap(),
+                   [
+                       0x01,                                           // Protocol Version
+                       0x01,                                           // WriteRequest
+                       0x0A, 0x03,                                     // Group Address
+                       0x12, 0x67, 0x7D, 0x6D,                         // Data Point Type
+                       b'"', b'H', b'e', b'l', b'l', b'o', b'"',       // Values (within double-quote characters)
+                       b' ',                                           // (Space)
+                       b'"', b'W', b'o', b'r', b'l', b'd', b'"',       // Values, continued
+                       0x00                                            // Termination NULL
+                   ]
+        );
     }
 
     #[test]
     fn test_convert_empty() {
-        assert_eq!(Protocol::convert_values_to_utf8_bytes(vec![]), [0x00]);  // only termination NULL
+        assert_eq!(Protocol::convert_values_to_utf8_bytes(vec![]),
+                   [
+                       0x00     // only termination NULL
+                   ]
+        );
     }
 
     #[test]
@@ -115,7 +132,7 @@ mod test {
     }
 
     #[test]
-    fn test_convert_simple_iso8891() {
+    fn test_convert_simple_utf8() {
         assert_eq!(Protocol::convert_values_to_utf8_bytes(vec!["äÖß査д"]),
                    [
                        b'"',
@@ -123,7 +140,7 @@ mod test {
                        0xC3, 0x96,          // Ö
                        0xC3, 0x9f,          // ß
                        0xE6, 0x9F, 0xBB,    // 査
-                       0xD0, 0xB4,          // дд
+                       0xD0, 0xB4,          // д
                        b'"',
                        0x00                 // termination NULL
                    ]
@@ -138,9 +155,25 @@ mod test {
                        b' ',                           // space
                        b'"', b'1', b'2', b'3', b'"',   // 123
                        b' ',                           // space
-                       b'"', b'$', b'%', b'&', b'"',   // 123
-                       0x00
+                       b'"', b'$', b'%', b'&', b'"',   // $%&
+                       0x00                            // termination NULL
                    ]
-        );                         // termination NULL
+        );
+    }
+
+    #[test]
+    fn test_convert_simple_utf8_multiple() {
+        assert_eq!(Protocol::convert_values_to_utf8_bytes(vec!["äÄ", "示野", "сит", "😀😂"]),
+                   [
+                       b'"', 0xC3, 0xA4, 0xC3, 0x84, b'"',                          // äÄ
+                       b' ',                                                        // space
+                       b'"', 0xE7, 0xA4, 0xBA, 0xE9, 0x87, 0x8E, b'"',              // 示野
+                       b' ',                                                        // space
+                       b'"', 0xD1, 0x81, 0xD0, 0xB8, 0xD1, 0x82, b'"',              // сит
+                       b' ',                                                        // space
+                       b'"', 0xF0, 0x9F, 0x98, 0x80, 0xF0, 0x9F, 0x98, 0x82, b'"',  // 😀😂
+                       0x00                                                         // termination NULL
+                   ]
+        );
     }
 }
