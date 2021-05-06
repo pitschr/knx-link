@@ -148,8 +148,8 @@ public final class SocketListener implements Runnable {
 
             if (read < 0) {
                 key.cancel();
-                key.channel().close();
                 LOG.debug("Client says bye! {}", channel.getRemoteAddress());
+                key.channel().close();
                 return;
             } else {
                 LOG.debug("Receiving packet.");

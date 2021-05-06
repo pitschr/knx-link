@@ -15,6 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-mod protocol;
-mod header;
-mod action;
+
+pub mod header;
+pub mod protocol;
+pub mod action;

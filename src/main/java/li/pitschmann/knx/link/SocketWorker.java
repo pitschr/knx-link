@@ -48,14 +48,11 @@ public final class SocketWorker {
         if (channel.isConnected()) {
             try {
                 channel.write(bb);
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Written to channel ({}): {}", channel, StandardCharsets.UTF_8.decode(bb.duplicate()));
-                }
             } catch (final IOException e) {
                 LOG.error("I/O Exception during replying to channel: {}", channel, e);
             }
         } else {
-            LOG.warn("The channel ({}) seems not be open anymore and could not respond: {}", channel, StandardCharsets.UTF_8.decode(bb.duplicate()));
+            LOG.warn("The channel ({}) seems not be open anymore and could not respond: {}", channel, StandardCharsets.UTF_8.decode(bb));
         }
     }
 
@@ -107,9 +104,10 @@ public final class SocketWorker {
                     if (b) {
                         final var dpt = readRequest.getDataPointType();
                         final var dpv = knxClient.getStatusPool().getValue(groupAddress, dpt);
-                        LOG.debug("Forward value of read request to channel ({}): {}", channel, dpv);
+                        LOG.debug("Forward data point value of read request to channel ({}): {}", channel, dpv);
 
                         final var text = dpv.toText() + dpt.getUnit();
+                        LOG.debug("Forward text of read request to channel ({}): {}", channel, text);
                         final var responseBytes = ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8));
                         writeToChannel(channel, responseBytes);
                     }
@@ -132,9 +130,11 @@ public final class SocketWorker {
 
         knxClient.writeRequest(groupAddress, dpv)
                 .thenAccept(b -> {
-                    final var str = b ? "SUCCESS" : "FAILED";
-                    final var strAsBytes = ByteBuffer.wrap(str.getBytes(StandardCharsets.UTF_8));
-                    writeToChannel(channel, strAsBytes);
+                    final var status = b ? "SUCCESS" : "FAILED";
+                    final var statusAsBytes = ByteBuffer.wrap(status.getBytes(StandardCharsets.UTF_8));
+                    LOG.debug("Write Request was: {}", status);
+
+                    writeToChannel(channel, statusAsBytes);
                 });
     }
 }

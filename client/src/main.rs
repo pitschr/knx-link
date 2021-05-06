@@ -1,15 +1,22 @@
 use std::collections::HashMap;
-use std::convert::TryFrom;
-use std::net::IpAddr;
+use std::convert::{TryFrom, TryInto};
+use std::net::{IpAddr, TcpStream};
 use std::sync::{Arc, Mutex};
 
 use clap::Clap;
 
 use address::group_address::GroupAddress;
+use crate::protocol_v1::action::Action;
+use crate::protocol_v1::protocol::{Protocol, ProtocolError};
+use crate::protocol_v1::header::Header;
+use std::str::from_utf8;
+use std::time::{Instant, Duration};
+use std::io::{Write as Wr, Read as Re, Error};
+use std::borrow::Borrow;
 
 mod address;
 mod datapoint;
-mod protocol_v1;
+pub mod protocol_v1;
 
 #[derive(Clap)]
 struct Opts {
@@ -49,53 +56,65 @@ fn main() {
     let opts: Opts = Opts::parse();
     println!("Host & Port: {}:{}", opts.host, opts.port);
 
+    let mut bytes = vec![];
     match opts.subcmd {
-        SubCommand::Read(r) => println!("Read: -g {}", r.group_address),
+        SubCommand::Read(r) => {
+            println!("Read: -g {}", r.group_address);
+            match Protocol::as_bytes(Header::new(Action::ReadRequest), r.group_address.as_str(), "1.001", vec![]) {
+                Ok(o) => { bytes = o }
+                Err(_) => {}
+            }
+        },
         SubCommand::Write(w) => {
             match w.data {
-                Some(data) => println!("Write: -g {} -d {}", w.group_address, data),
+                Some(data) => {
+                    let values = data.split(" ").collect();
+                    match Protocol::as_bytes(Header::new(Action::WriteRequest), w.group_address.as_str(), "1.001", values) {
+                        Ok(o) => { bytes = o }
+                        Err(_) => {}
+                    }
+                    println!("Write: -g {} -d {}", w.group_address, data)
+                },
                 None => println!("Write: -g {}", w.group_address),
             }
         }
     }
 
-    // Gets a value for config if supplied by user, or defaults to "default.conf"
-    // println!("Value for group_address: {}", opts.group_address);
+    if bytes.len() > 0 {
+        println!("Bytes: {:?}", bytes);
+    } else {
+        println!("No Bytes!")
+    }
 
-    let ga = GroupAddress::try_from("2/8").expect("something went wrong");
-    println!("Group Address: {:?}", ga);
+    match TcpStream::connect("localhost:3672") {
+        Ok(mut stream) => {
+            stream.set_read_timeout(Some(Duration::from_secs(3)));
+            stream.set_write_timeout(Some(Duration::from_secs(3)));
+            eprintln!("Successfully connected to the server");
 
-    //let version: u8 = 1;
-    //let action: u8 = 0; // 0 = read, 1 = write
+            match stream.write(bytes.as_slice()) {
+                Ok(_) => println!("Sent message, awaiting reply... "),
+                Err(e) => {
+                    eprintln!("Failed to send data: {:?}", e.kind());
+                    panic!("Failed")
+                },
+            }
 
-    //
-    // println!("Hello, world!");
-    // let start = Instant::now();
-    //
-    // match TcpStream::connect("localhost:3672") {
-    //     Ok(mut stream) => {
-    //         eprintln!("Successfully connected to the server");
-    //
-    //         let msg = b"hello";
-    //
-    //         stream.write(msg).unwrap();
-    //         println!("Sent message, awaiting reply... ");
-    //
-    //         let mut data = [0 as u8; 255];
-    //         match stream.read_exact(&mut data) {
-    //             Ok(_) => {
-    //                 let text = from_utf8(&data).unwrap();
-    //                 println!("Unexpected reply: {}", text);
-    //             }
-    //             Err(e) => {
-    //                 eprintln!("Failed to receive data: {}", e);
-    //             }
-    //         }
-    //     }
-    //     Err(e) => {
-    //         eprintln!("Failed to connect to the server: {}", e);
-    //     }
-    // }
-    //
-    // println!("terminated: {} ms", Instant::now().duration_since(start).as_millis());
+
+            let mut data = [0 as u8; 255];
+            match stream.read(&mut data) {
+                Ok(_) => {
+                    let text = from_utf8(&data).unwrap();
+                    println!("Reply: '{}'", text);
+                }
+                Err(e) => {
+                    eprintln!("Failed to receive data: {:?}", e.kind());
+                    panic!("Failed")
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("Failed to connect to the server: {}", e);
+        }
+    }
 }
