@@ -1,5 +1,5 @@
 [package]
-name = "knx-link"
+name = "knx-client"
 version = "0.1.0"
 authors = ["pitschr <github@pitschmann.li>"]
 edition = "2018"

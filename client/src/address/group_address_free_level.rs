@@ -48,7 +48,7 @@ impl fmt::Display for GroupAddressFreeLevel {
 
 impl GroupAddressBytes for GroupAddressFreeLevel {
     fn as_bytes(&self) -> [u8; 2] {
-        [(self.address >> 8) as u8, (self.address & 0xFF) as u8]
+        [(self.address() >> 8) as u8, (self.address() & 0xFF) as u8]
     }
 }
 
