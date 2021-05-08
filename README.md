@@ -69,7 +69,8 @@ In nutshell, the steps of [install.sh](./install.sh) script are:
 1. Downloading the `knx-link-<version>.jar` file to folder `/opt/knx-link-<version>`
 1. Install `knx.service` to start and keep KNX Link server running (e.g. after reboot)
 1. (Optional) Create a `knx` firewall rule for your `firewalld`, which opens the UDP port `3671` which is 
-   registered for KNX communication 
+   registered for KNX communication. Opens UDP ports `40001` (for Description Channel), `40002` 
+   (for Control Channel) and `40003` (for Data Channel) which are required for communication without NAT.
 1. Check if the systemd service is running 
 1. (Optional) Check if the port of KNX Link server is open
 

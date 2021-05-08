@@ -139,7 +139,9 @@ if [[ ! -z "$firewallCmd" ]]; then
     echo " On your machine I found 'firewall-cmd'"
     echo
     echo " Next steps is to setup a new firewall service called 'knx' which"
-    echo " opens the official KNX registered UDP port: 3671"
+    echo " opens the official KNX registered UDP port: 3671. For communication"
+    echo " without NAT, the UDP ports are opened too: 40001 (for Description),"
+    echo " 40002 (for Control) and 40003 (for Data)"
     echo
     echo " At the end the firewall daemon will be reloaded to make the new"
     echo " service effective."
@@ -153,6 +155,7 @@ if [[ ! -z "$firewallCmd" ]]; then
       firewall-cmd -q --permanent --service=knx --set-description="KNXnet/IP is a part of KNX standard for transmission of KNX telegrams via Ethernet"
       firewall-cmd -q --permanent --service=knx --set-short=KNX
       firewall-cmd -q --permanent --service=knx --add-port=3671/udp
+      firewall-cmd -q --permanent --service=knx --add-port=40001-40003/udp
       echo "DONE"
 
       echo -n "Registering firewall service 'knx' to current zone ... "
@@ -173,6 +176,8 @@ if [[ ! -z "$firewallCmd" ]]; then
     echo
     echo " Next steps is to ensure that your firewall configuration is"
     echo " up-to-date and opens the official KNX registered UDP port: 3671"
+    echo " For communication without NAT, the UDP ports are configured to open:"
+    echo " 40001 (for Description), 40002 (for Control) and 40003 (for Data)"
     echo
     echo " At the end the firewall daemon will be reloaded to make the new"
     echo " service effective."
@@ -183,6 +188,7 @@ if [[ ! -z "$firewallCmd" ]]; then
     if [[ $yn == [Yy]* ]]; then
       echo -n "Updating firewall service 'knx' ... "
       firewall-cmd -q --permanent --service=knx --add-port=3671/udp
+      firewall-cmd -q --permanent --service=knx --add-port=40001-40003/udp
       echo "DONE"
 
       echo -n "Registering firewall service 'knx' to current zone ... "

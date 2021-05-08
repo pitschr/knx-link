@@ -90,7 +90,12 @@ public final class Config {
         if (KnxMode.TUNNELING.equals(knxMode)) {
             if (knxAddress.isAnyLocalAddress()) {
                 // auto-discovery to be used
-                return ConfigBuilder.tunneling(knxNatEnabled).build();
+                return ConfigBuilder.tunneling(knxNatEnabled)
+                        // pre-defined ports for firewall otherwise the system would choose a random free one
+                        .setting(CoreConfigs.Description.PORT, 40001)
+                        .setting(CoreConfigs.Control.PORT, 40002)
+                        .setting(CoreConfigs.Data.PORT, 40003)
+                        .build();
             } else {
                 return ConfigBuilder.tunneling(
                         knxAddress,
