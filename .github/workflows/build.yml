@@ -47,3 +47,11 @@ jobs:
       - name: Submit Code Coverage
         if: github.event_name != 'pull_request'
         run: mvn coveralls:report -B -P github-actions -D repoToken=${{ secrets.COVERALLS_TOKEN }}
+
+      # Uploads the KNX Link Server Build Artifact (Uber-Jar)
+      - name: Upload KNX-Link Server Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          if-no-files-found: error
+          name: knx-server
+          path: target/knx-server-*
