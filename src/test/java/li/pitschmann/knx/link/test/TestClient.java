@@ -21,6 +21,8 @@ import li.pitschmann.knx.core.utils.ByteFormatter;
 import li.pitschmann.knx.core.utils.Closeables;
 import li.pitschmann.knx.core.utils.Sleeper;
 import li.pitschmann.knx.link.Action;
+import li.pitschmann.knx.link.protocol.Header;
+import li.pitschmann.knx.link.protocol.ResponseBody;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,6 +36,7 @@ import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -46,6 +49,7 @@ public final class TestClient implements AutoCloseable {
     private final int serverPort;
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
     private final List<String> receivedStrings = new ArrayList<>();
+    private final List<ResponseBody> receivedResponses = new LinkedList<>();
     private Selector writeSelector;
     private Selector readSelector;
 
@@ -64,6 +68,32 @@ public final class TestClient implements AutoCloseable {
         final var client = new TestClient(serverPort);
         client.start();
         return client;
+    }
+
+    /**
+     * Verifies if the {@code expectedResponseBodies} has been received by
+     * the current {@link TestClient} within 5 hardcoded-second timeout.
+     *
+     * @param expectedResponseBodies expected array of {@link ResponseBody}; may be empty
+     * @throws AssertionError in case there was a mismatch or timeout occurred first
+     */
+    public void verifyReceivedResponses(ResponseBody... expectedResponseBodies) {
+        var result = Sleeper.milliseconds(50, () -> {
+            if (receivedResponses.size() == expectedResponseBodies.length) {
+                for (var i = 0; i < expectedResponseBodies.length; i++) {
+                    if (!expectedResponseBodies[i].equals(receivedResponses.get(i))) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            return false;
+        }, 5000);
+
+        if (!result) {
+            throw new AssertionError("Not expected responses received: " +
+                    "expected=" + Arrays.toString(expectedResponseBodies) + ", actual=" + receivedResponses);
+        }
     }
 
     /**
@@ -207,12 +237,15 @@ public final class TestClient implements AutoCloseable {
                 byteBuffer.flip();
                 final var receivedBytes = new byte[byteBuffer.limit()];
                 byteBuffer.get(receivedBytes);
+
+                final var headerBytes = Header.of(receivedBytes[0], receivedBytes[1]);
+                final var responseBytes = ResponseBody.of(Arrays.copyOfRange(receivedBytes, 2, receivedBytes.length));
                 if (LOG.isDebugEnabled()) {
-                    LOG.debug("Receiving packet: {}", ByteFormatter.formatHexAsString(receivedBytes));
+                    LOG.debug("Receiving packet: header={}, body={}", headerBytes, responseBytes);
                 }
-                System.out.println("Receiving packet: " + new String(receivedBytes, StandardCharsets.UTF_8));
 
                 receivedStrings.add(new String(receivedBytes, StandardCharsets.UTF_8));
+                receivedResponses.add(responseBytes);
             } finally {
                 byteBuffer.clear();
             }

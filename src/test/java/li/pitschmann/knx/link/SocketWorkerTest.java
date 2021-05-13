@@ -19,8 +19,8 @@ package li.pitschmann.knx.link;
 
 import li.pitschmann.knx.core.address.GroupAddress;
 import li.pitschmann.knx.core.datapoint.DPT7;
-import li.pitschmann.knx.core.datapoint.DataPointType;
 import li.pitschmann.knx.core.exceptions.KnxEnumNotFoundException;
+import li.pitschmann.knx.link.protocol.ResponseBody;
 import li.pitschmann.knx.link.test.Helper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,11 +28,12 @@ import org.mockito.ArgumentCaptor;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
 
 import static li.pitschmann.knx.link.test.Helper.createChannelPacketMock;
 import static li.pitschmann.knx.link.test.Helper.createKnxClientMock;
+import static li.pitschmann.knx.link.test.Helper.createKnxStatusDataMock;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -116,8 +117,7 @@ class SocketWorkerTest {
     @DisplayName("#execute(ChannelPacket) - READ REQUEST - Successful")
     void test_execute_ReadRequest() throws IOException {
         final var knxClientMock = createKnxClientMock();
-        when(knxClientMock.getStatusPool().getValue(any(GroupAddress.class), any(DataPointType.class)))
-                .thenReturn(DPT7.ABSOLUTE_COLOR_TEMPERATURE.of(4711));
+        createKnxStatusDataMock(knxClientMock, DPT7.ABSOLUTE_COLOR_TEMPERATURE.of(4711));
 
         final var channelPacketMock = createChannelPacketMock(
                 Helper.createProtocolV1Packet(Action.READ_REQUEST, "1/2/3", "7.600", null)
@@ -129,8 +129,12 @@ class SocketWorkerTest {
         final var argCaptor = ArgumentCaptor.forClass(ByteBuffer.class);
         verify(channelPacketMock.getChannel(), timeout(5000).times(2)).write(argCaptor.capture());
 
-        assertThat(argCaptor.getAllValues().stream().map(ByteBuffer::array).map(a -> new String(a, StandardCharsets.UTF_8)))
-                .containsExactly("SUCCESS", "4711K");
+        assertThat(argCaptor.getAllValues().stream().map(ByteBuffer::array)
+                .map(a -> ResponseBody.of(Arrays.copyOfRange(a, 2, a.length)))) // first two bytes are "header"
+                .containsExactly(
+                        ResponseBody.of(false, Status.SUCCESS),
+                        ResponseBody.of(true, Status.SUCCESS, "4711K")
+                );
     }
 
     @Test
@@ -190,8 +194,11 @@ class SocketWorkerTest {
         final var argCaptor = ArgumentCaptor.forClass(ByteBuffer.class);
         verify(channelPacketMock.getChannel(), timeout(5000)).write(argCaptor.capture());
 
-        assertThat(argCaptor.getAllValues().stream().map(ByteBuffer::array).map(a -> new String(a, StandardCharsets.UTF_8)))
-                .containsExactly("SUCCESS");
+        assertThat(argCaptor.getAllValues().stream().map(ByteBuffer::array)
+                .map(a -> ResponseBody.of(Arrays.copyOfRange(a, 2, a.length)))) // first two bytes are "header"
+                .containsExactly(
+                        ResponseBody.of(true, Status.SUCCESS)
+                );
     }
 
 }

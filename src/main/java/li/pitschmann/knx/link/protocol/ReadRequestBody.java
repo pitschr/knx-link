@@ -40,7 +40,6 @@ import li.pitschmann.knx.link.protocol.helpers.ProtocolHelper;
  *             | (Data Point Sub Type)                                         |
  *             +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
  *
- * Format:     (U<sub>2</sub> U<sub>2</sub> U<sub>2</sub>)
  * Length:     6 octets
  * Fields:
  *             Group Address       (2 octets): [1, 65535]

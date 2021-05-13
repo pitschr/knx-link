@@ -17,7 +17,10 @@
 
 package li.pitschmann.knx.link.protocol;
 
+import li.pitschmann.knx.core.utils.Strings;
 import li.pitschmann.knx.link.Action;
+
+import java.util.Objects;
 
 /**
  * Implementation for Header. This class is immutable
@@ -41,13 +44,17 @@ public final class Header {
     private final int version;
     private final Action action;
 
-    private Header(final byte versionAsByte, final byte actionAsByte) {
-        version = Byte.toUnsignedInt(versionAsByte);
-        action = Action.of(Byte.toUnsignedInt(actionAsByte));
+    private Header(final int version, final Action action) {
+        this.version = version;
+        this.action = action;
     }
 
-    public static Header of(final byte byte1, final byte byte2) {
-        return new Header(byte1, byte2);
+    public static Header of(final int version, final Action action) {
+        return new Header(version, action);
+    }
+
+    public static Header of(final byte versionAsByte, final byte actionAsByte) {
+        return of(Byte.toUnsignedInt(versionAsByte), Action.of(Byte.toUnsignedInt(actionAsByte)));
     }
 
     public int getVersion() {
@@ -56,5 +63,30 @@ public final class Header {
 
     public Action getAction() {
         return action;
+    }
+
+    public byte[] getBytes() {
+        return new byte[]{(byte) version, action.getByte()};
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Header header = (Header) o;
+        return version == header.version && action == header.action;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(version, action);
+    }
+
+    @Override
+    public String toString() {
+        return Strings.toStringHelper(this)
+                .add("version", version)
+                .add("action", action.name())
+                .toString();
     }
 }

@@ -26,9 +26,9 @@ import li.pitschmann.knx.core.datapoint.DPT19;
 import li.pitschmann.knx.core.datapoint.DPT2;
 import li.pitschmann.knx.core.datapoint.DPT28;
 import li.pitschmann.knx.core.datapoint.DPTRaw;
-import li.pitschmann.knx.core.datapoint.DataPointType;
 import li.pitschmann.knx.core.datapoint.value.DPT19Value;
 import li.pitschmann.knx.link.config.Config;
+import li.pitschmann.knx.link.protocol.ResponseBody;
 import li.pitschmann.knx.link.test.TestClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,13 +41,12 @@ import java.time.LocalTime;
 
 import static li.pitschmann.knx.link.test.Helper.createConfigMock;
 import static li.pitschmann.knx.link.test.Helper.createKnxClientMock;
-import static org.mockito.ArgumentMatchers.any;
+import static li.pitschmann.knx.link.test.Helper.createKnxStatusDataMock;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 /**
  * Test for {@link DefaultServer}
@@ -76,10 +75,7 @@ class DefaultServerTest {
     @Test
     @DisplayName("Read Request with DPT 1.004 - Ramp")
     void test_Server_ReadRequest_DPT1() {
-        when(knxClientMock.getStatusPool().getValue(
-                any(GroupAddress.class),
-                any(DataPointType.class)))
-                .thenReturn(DPT1.RAMP.of(true));
+        createKnxStatusDataMock(knxClientMock, DPT1.RAMP.of(true));
 
         client.readRequest("8/3/250", "1.004");
 
@@ -87,18 +83,18 @@ class DefaultServerTest {
         verify(knxClientMock, timeout(1000))
                 .readRequest(expectedGroupAddress);
         verify(knxClientMock.getStatusPool(), timeout(1000))
-                .getValue(eq(expectedGroupAddress), any(DataPointType.class));
+                .getStatusFor(expectedGroupAddress);
 
-        client.verifyReceivedStrings("SUCCESS", "Ramp");
+        client.verifyReceivedResponses(
+                ResponseBody.of(false, Status.SUCCESS),
+                ResponseBody.of(true, Status.SUCCESS, "Ramp")
+        );
     }
 
     @Test
     @DisplayName("Read Request with DPT 11.001 - Date")
     void test_Server_ReadRequest_DPT11() {
-        when(knxClientMock.getStatusPool().getValue(
-                any(GroupAddress.class),
-                any(DataPointType.class)))
-                .thenReturn(DPT11.DATE.of(LocalDate.of(2021, 3, 28)));
+        createKnxStatusDataMock(knxClientMock, DPT11.DATE.of(LocalDate.of(2021, 3, 28)));
 
         client.readRequest("1/2/3", "11.001");
 
@@ -106,18 +102,18 @@ class DefaultServerTest {
         verify(knxClientMock, timeout(1000))
                 .readRequest(expectedGroupAddress);
         verify(knxClientMock.getStatusPool(), timeout(1000))
-                .getValue(eq(expectedGroupAddress), any(DataPointType.class));
+                .getStatusFor(expectedGroupAddress);
 
-        client.verifyReceivedStrings("SUCCESS", "2021-03-28");
+        client.verifyReceivedResponses(
+                ResponseBody.of(false, Status.SUCCESS),
+                ResponseBody.of(true, Status.SUCCESS, "2021-03-28")
+        );
     }
 
     @Test
     @DisplayName("Read Request with unsupported DPT")
     void test_Server_ReadRequest_UnsupportedDPT() {
-        when(knxClientMock.getStatusPool().getValue(
-                any(GroupAddress.class),
-                any(DataPointType.class)))
-                .thenReturn(DPTRaw.VALUE.of((byte) 0x12, (byte) 0x67));
+        createKnxStatusDataMock(knxClientMock, DPTRaw.VALUE.of((byte) 0x12, (byte) 0x67));
 
         client.readRequest("1/2/3", "99.9999");
 
@@ -125,9 +121,12 @@ class DefaultServerTest {
         verify(knxClientMock, timeout(1000))
                 .readRequest(expectedGroupAddress);
         verify(knxClientMock.getStatusPool(), timeout(1000))
-                .getValue(eq(expectedGroupAddress), any(DataPointType.class));
+                .getStatusFor(expectedGroupAddress);
 
-        client.verifyReceivedStrings("SUCCESS", "0x12 67");
+        client.verifyReceivedResponses(
+                ResponseBody.of(false, Status.SUCCESS),
+                ResponseBody.of(true, Status.SUCCESS, "0x12 67")
+        );
     }
 
     @Test
@@ -141,7 +140,9 @@ class DefaultServerTest {
                         eq(DPT1.SWITCH.of(true))
                 );
 
-        client.verifyReceivedStrings("SUCCESS");
+        client.verifyReceivedResponses(
+                ResponseBody.of(true, Status.SUCCESS)
+        );
     }
 
     @Test
@@ -155,7 +156,9 @@ class DefaultServerTest {
                         eq(DPT2.ALARM_CONTROL.of(true, false))
                 );
 
-        client.verifyReceivedStrings("SUCCESS");
+        client.verifyReceivedResponses(
+                ResponseBody.of(true, Status.SUCCESS)
+        );
     }
 
     @Test
@@ -169,7 +172,9 @@ class DefaultServerTest {
                         eq(DPT14.VOLUME_FLUX_METER.of(1234.567d))
                 );
 
-        client.verifyReceivedStrings("SUCCESS");
+        client.verifyReceivedResponses(
+                ResponseBody.of(true, Status.SUCCESS)
+        );
     }
 
     @Test
@@ -188,7 +193,9 @@ class DefaultServerTest {
                         ))
                 );
 
-        client.verifyReceivedStrings("SUCCESS");
+        client.verifyReceivedResponses(
+                ResponseBody.of(true, Status.SUCCESS)
+        );
     }
 
     @Test
@@ -198,10 +205,12 @@ class DefaultServerTest {
 
         verify(knxClientMock, timeout(1000))
                 .writeRequest(
-                        eq(GroupAddress.of(1, 2, 3)),
-                        eq(DPT28.UTF_8.of("Hällö 読継 食う न्त्राल яуи δολ 123"))
+                        GroupAddress.of(1, 2, 3),
+                        DPT28.UTF_8.of("Hällö 読継 食う न्त्राल яуи δολ 123")
                 );
 
-        client.verifyReceivedStrings("SUCCESS");
+        client.verifyReceivedResponses(
+                ResponseBody.of(true, Status.SUCCESS)
+        );
     }
 }

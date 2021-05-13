@@ -20,6 +20,7 @@ package li.pitschmann.knx.link.test;
 import li.pitschmann.knx.core.address.GroupAddress;
 import li.pitschmann.knx.core.annotations.Nullable;
 import li.pitschmann.knx.core.communication.KnxClient;
+import li.pitschmann.knx.core.communication.KnxStatusData;
 import li.pitschmann.knx.core.communication.KnxStatusPool;
 import li.pitschmann.knx.core.datapoint.value.DataPointValue;
 import li.pitschmann.knx.link.Action;
@@ -71,8 +72,16 @@ public final class Helper {
         when(knxClientMock.isRunning()).thenReturn(true);
         when(knxClientMock.readRequest(any(GroupAddress.class))).thenReturn(CompletableFuture.completedFuture(true));
         when(knxClientMock.writeRequest(any(GroupAddress.class), any(DataPointValue.class))).thenReturn(CompletableFuture.completedFuture(true));
-        when(knxClientMock.getStatusPool()).thenReturn(mock(KnxStatusPool.class));
+        final var knxStatusPoolMock = mock(KnxStatusPool.class);
+        when(knxClientMock.getStatusPool()).thenReturn(knxStatusPoolMock);
         return knxClientMock;
+    }
+
+    public static KnxStatusData createKnxStatusDataMock(final KnxClient knxClientMock, final DataPointValue dpv) {
+        final var knxStatusDataMock = mock(KnxStatusData.class);
+        when(knxStatusDataMock.getData()).thenReturn(dpv.toByteArray());
+        when(knxClientMock.getStatusPool().getStatusFor(any(GroupAddress.class))).thenReturn(knxStatusDataMock);
+        return knxStatusDataMock;
     }
 
     /**

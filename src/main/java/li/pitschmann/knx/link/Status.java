@@ -22,39 +22,47 @@ import li.pitschmann.knx.core.exceptions.KnxEnumNotFoundException;
 import java.util.Arrays;
 
 /**
- * General Action for packet
+ * Status for KNX Link
  */
-public enum Action {
+public enum Status {
     /**
-     * READ Request. Here we will send a READ Request to KNX Net/IP device.
-     * See: {@link li.pitschmann.knx.link.protocol.ReadRequestBody}
+     * Success Message (General)
      */
-    READ_REQUEST(0x00),
+    SUCCESS(0x00),
     /**
-     * WRITE Request. Here we will send a WRITE Request to KNX Net/IP device.
-     * See: {@link li.pitschmann.knx.link.protocol.WriteRequestBody}
+     * Failure Message / Unknown Error Message (General)
      */
-    WRITE_REQUEST(0x01),
+    ERROR(0x01),
     /**
-     * READ Response. Here we will send a READ Response to the KNX Link Client
+     * Error: Request Failed, No Acknowledge received from KNX Net/IP
      */
-    READ_RESPONSE(0x02),
+    ERROR_REQUEST(0x02),
     /**
-     * WRITE Response. Here we will send a WRITE Response to the KNX Link Client
+     * Error: Timeout, No Response received from KNX Net/IP
      */
-    WRITE_RESPONSE(0x03);
+    ERROR_TIMEOUT(0x03),
+    /**
+     * Error: Illegal Group Address (e.g. 0/0/0)
+     */
+    ERROR_GROUP_ADDRESS(0x04),
+    /**
+     * Error: Incompatible Data Point Type
+     * (e.g. byte array cannot be translated into String for given Data Point Type)
+     * (e.g. string cannot be translated into byte array for given Data Point Type)
+     */
+    ERROR_INCOMPATIBLE_DATA_POINT_TYPE(0x05);
 
     private final int code;
 
-    Action(final int code) {
+    Status(final int code) {
         this.code = code;
     }
 
-    public static Action of(final int code) {
+    public static Status of(final int code) {
         return Arrays.stream(values())
                 .filter(x -> x.code == code)
                 .findFirst()
-                .orElseThrow(() -> new KnxEnumNotFoundException(Action.class, code));
+                .orElseThrow(() -> new KnxEnumNotFoundException(Status.class, code));
     }
 
     public byte getByte() {

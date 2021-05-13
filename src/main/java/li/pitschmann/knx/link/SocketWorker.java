@@ -18,10 +18,12 @@
 package li.pitschmann.knx.link;
 
 import li.pitschmann.knx.core.communication.KnxClient;
+import li.pitschmann.knx.core.datapoint.value.DataPointValue;
 import li.pitschmann.knx.core.utils.ByteFormatter;
 import li.pitschmann.knx.core.utils.Preconditions;
 import li.pitschmann.knx.link.protocol.Header;
 import li.pitschmann.knx.link.protocol.ReadRequestBody;
+import li.pitschmann.knx.link.protocol.ResponseBody;
 import li.pitschmann.knx.link.protocol.WriteRequestBody;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +44,15 @@ public final class SocketWorker {
 
     SocketWorker(final KnxClient knxClient) {
         this.knxClient = Objects.requireNonNull(knxClient);
+    }
+
+    private static void writeToChannel(final SocketChannel channel, final Header header, final ResponseBody responseBody) {
+        final var headerBytes = header.getBytes();
+        final var responseBytes = responseBody.getBytes();
+        final var bytes = new byte[headerBytes.length + responseBytes.length];
+        System.arraycopy(headerBytes, 0, bytes, 0, headerBytes.length);
+        System.arraycopy(responseBytes, 0, bytes, headerBytes.length, responseBytes.length);
+        writeToChannel(channel, ByteBuffer.wrap(bytes));
     }
 
     private static void writeToChannel(final SocketChannel channel, final ByteBuffer bb) {
@@ -94,22 +105,41 @@ public final class SocketWorker {
 
         knxClient.readRequest(groupAddress)
                 .thenAccept(b -> {
-                    final var status = b ? "SUCCESS" : "FAILED";
-                    final var statusAsBytes = ByteBuffer.wrap(status.getBytes(StandardCharsets.UTF_8));
-                    LOG.debug("Read Request was: {}", status);
+                    // Currently we only have Protocol V1 - so no special strategy implementation required
+                    final var responseHeader = Header.of(1, Action.READ_RESPONSE);
 
-                    writeToChannel(channel, statusAsBytes);
-
-                    // only look-up in status pool when read request was successful
                     if (b) {
-                        final var dpt = readRequest.getDataPointType();
-                        final var dpv = knxClient.getStatusPool().getValue(groupAddress, dpt);
-                        LOG.debug("Forward data point value of read request to channel ({}): {}", channel, dpv);
+                        // Success Request
+                        LOG.debug("Read Request success for group address: {}", groupAddress);
+                        writeToChannel(channel, responseHeader, ResponseBody.of(false, Status.SUCCESS));
 
-                        final var text = dpv.toText() + dpt.getUnit();
-                        LOG.debug("Forward text of read request to channel ({}): {}", channel, text);
-                        final var responseBytes = ByteBuffer.wrap(text.getBytes(StandardCharsets.UTF_8));
-                        writeToChannel(channel, responseBytes);
+                        // Try to get the KNX status
+                        final var value = knxClient.getStatusPool().getStatusFor(groupAddress);
+                        if (value == null) {
+                            LOG.warn("Could not get read data for group address: {}", groupAddress);
+                            writeToChannel(channel, responseHeader, ResponseBody.of(true, Status.ERROR_TIMEOUT));
+                            return;
+                        }
+
+                        // KNX status received, now try to translate it to Data Point Type
+                        final var dpt = readRequest.getDataPointType();
+                        DataPointValue dpv = null;
+                        try {
+                            dpv = dpt.of(value.getData());
+                        } catch (final Exception e) {
+                            LOG.warn("Could not parse the read data for dpt: {}", dpt);
+                            writeToChannel(channel, responseHeader, ResponseBody.of(true, Status.ERROR_INCOMPATIBLE_DATA_POINT_TYPE));
+                            return;
+                        }
+
+                        // Translation successful
+                        final var message = dpv.toText() + dpt.getUnit();
+                        LOG.debug("Forward text of read request to channel ({}) from {}: {}", channel, groupAddress, message);
+                        writeToChannel(channel, responseHeader, ResponseBody.of(true, Status.SUCCESS, message));
+                    } else {
+                        // Request failed, No Acknowledge
+                        LOG.warn("Read Request failed for group address: {}", groupAddress);
+                        writeToChannel(channel, responseHeader, ResponseBody.of(true, Status.ERROR_REQUEST));
                     }
                 });
     }
@@ -130,11 +160,15 @@ public final class SocketWorker {
 
         knxClient.writeRequest(groupAddress, dpv)
                 .thenAccept(b -> {
-                    final var status = b ? "SUCCESS" : "FAILED";
-                    final var statusAsBytes = ByteBuffer.wrap(status.getBytes(StandardCharsets.UTF_8));
-                    LOG.debug("Write Request was: {}", status);
-
-                    writeToChannel(channel, statusAsBytes);
+                    // Currently we only have Protocol V1 - so no special strategy implementation required
+                    final var responseHeader = Header.of(1, Action.WRITE_RESPONSE);
+                    if (b) {
+                        writeToChannel(channel, responseHeader, ResponseBody.of(true, Status.SUCCESS));
+                        LOG.debug("Write Request was successful for: {}", groupAddress);
+                    } else {
+                        writeToChannel(channel, responseHeader, ResponseBody.of(true, Status.ERROR_REQUEST));
+                        LOG.debug("Write Request was not successful for: {}", groupAddress);
+                    }
                 });
     }
 }
