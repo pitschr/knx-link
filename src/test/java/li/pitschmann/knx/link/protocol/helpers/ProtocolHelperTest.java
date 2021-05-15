@@ -25,7 +25,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Test for {@link ProtocolHelper}
@@ -109,46 +108,12 @@ class ProtocolHelperTest {
     @Test
     @DisplayName("#parseArguments(byte[]) - No Arguments")
     void test_getArgs_NoArgs() {
-        // index: 8 - terminated NULL
         assertThat(
-                ProtocolHelper.parseArguments(new byte[]{
-                        0x00 // Termination NULL
-                })
-        ).isEmpty();
-    }
-
-    @Test
-    @DisplayName("#parseArguments(byte[]) - Null or Empty Bytes")
-    void test_getArguments_NullOrEmpty() {
-        assertThatThrownBy(() ->
                 ProtocolHelper.parseArguments(null)
-        ).isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Bytes is null or empty?");
-
-        assertThatThrownBy(() ->
-                ProtocolHelper.parseArguments(new byte[]{
-                        // No Termination NULL
-                })
-        ).isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Bytes is null or empty?");
-    }
-
-    @Test
-    @DisplayName("#parseArguments(byte[]) - Wrong NULL Termination")
-    void test_getArguments_WrongNullTermination() {
-        assertThatThrownBy(() ->
-                ProtocolHelper.parseArguments(new byte[]{
-                        0x01 // Wrong Termination NULL
-                })
-        ).isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("No NULL termination?: 0x01");
-
-        assertThatThrownBy(() ->
-                ProtocolHelper.parseArguments(new byte[]{
-                        0x00, 0x00, 0x03 // Wrong Termination NULL
-                })
-        ).isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("No NULL termination?: 0x00 00 03");
+        ).isEmpty();
+        assertThat(
+                ProtocolHelper.parseArguments(new byte[0])
+        ).isEmpty();
     }
 
     @Test
@@ -157,8 +122,7 @@ class ProtocolHelperTest {
         // Arguments: Hello
         assertThat(
                 ProtocolHelper.parseArguments(new byte[]{
-                        0x48 /*H*/, 0x65 /*e*/, 0x6C /*l*/, 0x6C /*l*/, 0x6F, /*o*/             // index: 1 - 5
-                        0x00 /*NULL*/                                                           // indx: 6
+                        0x48 /*H*/, 0x65 /*e*/, 0x6C /*l*/, 0x6C /*l*/, 0x6F /*o*/              // index: 1 - 5
                 })
         ).containsExactly("Hello");
     }
@@ -175,9 +139,7 @@ class ProtocolHelperTest {
 
                         (byte) 0xC3, (byte) 0xA4 /*ä*/, (byte) 0xC3, (byte) 0x96 /*Ö*/,         // index: 7 - 10
                         0x21 /*!*/, 0x24 /*$*/,                                                 // index: 11 - 12
-                        (byte) 0xE2, (byte) 0x82, (byte) 0xAC /*€*/,                            // index: 13 - 15
-
-                        0x00 /*NULL*/                                                           // index: 16
+                        (byte) 0xE2, (byte) 0x82, (byte) 0xAC /*€*/                             // index: 13 - 15
                 })
         ).containsExactly("Hello", "äÖ!$€");
     }
@@ -198,9 +160,7 @@ class ProtocolHelperTest {
 
                         0x20 /*SPACE*/,                                         // index: 11
 
-                        0x47, 0x48 /*GH*/,                                      // index: 12 - 13
-
-                        0x00 /*NULL*/                                           // index: 14
+                        0x47, 0x48 /*GH*/                                       // index: 12 - 13
                 })
         ).containsExactly("ABC", "DE F", "GH");
     }
@@ -225,9 +185,7 @@ class ProtocolHelperTest {
 
                         0x22 /*QUOTE*/,                                                   // index: 15
                         0x4F /*O*/, 0x50 /*P*/,                                           // index: 16 - 17
-                        0x22 /*QUOTE*/,                                                   // index: 18
-
-                        0x00 /*NULL*/                                                     // index: 19
+                        0x22 /*QUOTE*/                                                    // index: 18
                 })
         ).containsExactly("IJK", "L\"MN", "OP");
     }

@@ -30,32 +30,34 @@ import static org.assertj.core.api.Assertions.assertThat;
 class HeaderTest {
     @Test
     @DisplayName("#of(int, Action) and #of(byte, byte): Version=1, Action=READ_REQUEST")
-    void test_Version1_ReadRequest() {
-        final var header = Header.of(1, Action.READ_REQUEST);
-        final var header2 = Header.of((byte) 0x01, (byte) 0x00);
+    void test_ReadRequest() {
+        final var header = Header.of(1, Action.READ_REQUEST, 13);
+        final var header2 = Header.of((byte) 0x01, (byte) 0x00, (byte) 0x0D);
 
         assertThat(header.getVersion()).isEqualTo(1);
         assertThat(header.getAction()).isSameAs(Action.READ_REQUEST);
+        assertThat(header.getLength()).isSameAs(13);
 
         assertThat(header).isEqualTo(header2);
         assertThat(header).hasSameHashCodeAs(header2);
 
-        assertThat(header).hasToString("Header{version=1, action=READ_REQUEST}");
+        assertThat(header).hasToString("Header{version=1, action=READ_REQUEST, length=13}");
     }
 
     @Test
-    @DisplayName("#of(int, Action) and #of(byte, byte): Version=7, Action=WRITE_REQUEST")
-    void test_Version7_WriteRequest() {
-        final var header = Header.of(7, Action.WRITE_REQUEST);
-        final var header2 = Header.of((byte) 0x07, (byte) 0x01);
+    @DisplayName("#of(int, Action) and #of(byte, byte): Version=7, Action=WRITE_REQUEST, Length=11")
+    void test_WriteRequest() {
+        final var header = Header.of(7, Action.WRITE_REQUEST, 17);
+        final var header2 = Header.of((byte) 0x07, (byte) 0x01, (byte) 0x11);
 
         assertThat(header.getVersion()).isEqualTo(7);
         assertThat(header.getAction()).isSameAs(Action.WRITE_REQUEST);
+        assertThat(header.getLength()).isSameAs(17);
 
         assertThat(header).isEqualTo(header2);
         assertThat(header).hasSameHashCodeAs(header2);
 
-        assertThat(header).hasToString("Header{version=7, action=WRITE_REQUEST}");
+        assertThat(header).hasToString("Header{version=7, action=WRITE_REQUEST, length=17}");
     }
 
     @Test

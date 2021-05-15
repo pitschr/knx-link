@@ -47,7 +47,7 @@ import li.pitschmann.knx.link.protocol.helpers.ProtocolHelper;
  *             Data Point Sub Type (2 octets): [0, 65535]
  * </pre>
  *
- * <p> For action <strong>read request (0x00)</strong> the total length of 6 octets
+ * <p> For action <strong>read request</strong> the total length of 6 octets
  * is expected. If the length differs, then packet is considered as corrupted and
  * shall be dropped with a warning.
  *

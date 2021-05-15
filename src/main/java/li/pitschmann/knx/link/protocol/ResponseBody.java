@@ -44,10 +44,10 @@ import java.util.Objects;
  *             +-7-+-6-+-5-+-4-+-3-+-2-+-1-+-0-+-7-+-6-+-5-+-4-+-3-+-2-+-1-+-0-+
  *             |                    ... variable length ...                    |
  *             +-7-+-6-+-5-+-4-+-3-+-2-+-1-+-0-+-7-+-6-+-5-+-4-+-3-+-2-+-1-+-0-+
- *             | (Message Byte N)                (Terminated by NULL 0x00)     |
+ *             |                                 (Message Byte N)              |
  *             +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
  *
- * Length:     Minimum 3 octets (2 octets for response body + 1 octet for NULL)
+ * Length:     Minimum 2 octets
  * Fields:
  *             Byte 1, Bit 7       (1 bit)  :
  *                                             0 = Not Last Packet
@@ -59,14 +59,13 @@ import java.util.Objects;
  *             Byte 2              (reserved)
  *             Argument Bytes                : no bytes for 'no response message'
  *                                             N bytes for 'response message' (encoded as UTF-8 String)
- *             Terminated by Null  (1 octet) : 0x00
  *
  * </pre>
  *
  * @author PITSCHR
  */
 public final class ResponseBody {
-    private static final int MIN_STRUCTURE_LENGTH = 3;
+    private static final int MIN_STRUCTURE_LENGTH = 2;
     private final boolean lastPacket;
     private final Status status;
     private final String message;
@@ -80,10 +79,10 @@ public final class ResponseBody {
     private ResponseBody(final byte[] bytes) {
         this.lastPacket = (bytes[0] & 0x80) == 0x80;
         this.status = Status.of(bytes[0] & 0xF);
-        if (bytes.length == 3) {
+        if (bytes.length == 2) {
             this.message = "";
         } else {
-            this.message = new String(Arrays.copyOfRange(bytes, 2, bytes.length - 1), StandardCharsets.UTF_8);
+            this.message = new String(Arrays.copyOfRange(bytes, 2, bytes.length), StandardCharsets.UTF_8);
         }
     }
 
@@ -97,9 +96,7 @@ public final class ResponseBody {
 
     public static ResponseBody of(final byte[] bytes) {
         Preconditions.checkArgument(bytes != null && bytes.length >= MIN_STRUCTURE_LENGTH,
-                "Bytes must not be null and minimum 3 bytes: {}", bytes);
-        Preconditions.checkArgument(bytes[bytes.length - 1] == 0,
-                "No Termination NULL?: {}", bytes);
+                "Bytes must not be null and minimum 2 bytes: {}", bytes);
         return new ResponseBody(bytes);
     }
 
@@ -127,7 +124,7 @@ public final class ResponseBody {
 
     public byte[] getBytes() {
         final var bytes = getMessage().getBytes(StandardCharsets.UTF_8);
-        final var newBytes = new byte[bytes.length + 3]; // 2 bytes from ResponseBody + 1 NULL Termination
+        final var newBytes = new byte[bytes.length + 2];
         newBytes[0] = getByte1();
         newBytes[1] = getByte2();
         System.arraycopy(bytes, 0, newBytes, 2, bytes.length);
@@ -138,8 +135,8 @@ public final class ResponseBody {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        ResponseBody that = (ResponseBody) o;
-        return lastPacket == that.lastPacket && status == that.status && Objects.equals(message, that.message);
+        final var other = (ResponseBody) o;
+        return lastPacket == other.lastPacket && status == other.status && Objects.equals(message, other.message);
     }
 
     @Override

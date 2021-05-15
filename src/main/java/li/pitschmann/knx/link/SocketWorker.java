@@ -31,7 +31,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -46,24 +45,25 @@ public final class SocketWorker {
         this.knxClient = Objects.requireNonNull(knxClient);
     }
 
-    private static void writeToChannel(final SocketChannel channel, final Header header, final ResponseBody responseBody) {
-        final var headerBytes = header.getBytes();
+    private static void writeToChannel(final SocketChannel channel, final Action action, final ResponseBody responseBody) {
         final var responseBytes = responseBody.getBytes();
+
+        // Currently we only have Protocol V1 - so no special strategy implementation required
+        final var headerBytes = Header.of(1, action, responseBytes.length).getBytes();
         final var bytes = new byte[headerBytes.length + responseBytes.length];
         System.arraycopy(headerBytes, 0, bytes, 0, headerBytes.length);
         System.arraycopy(responseBytes, 0, bytes, headerBytes.length, responseBytes.length);
-        writeToChannel(channel, ByteBuffer.wrap(bytes));
-    }
 
-    private static void writeToChannel(final SocketChannel channel, final ByteBuffer bb) {
         if (channel.isConnected()) {
             try {
-                channel.write(bb);
+                channel.write(ByteBuffer.wrap(bytes));
             } catch (final IOException e) {
                 LOG.error("I/O Exception during replying to channel: {}", channel, e);
             }
         } else {
-            LOG.warn("The channel ({}) seems not be open anymore and could not respond: {}", channel, StandardCharsets.UTF_8.decode(bb));
+            LOG.warn("The channel ({}) seems not be open anymore and could not respond: {}",
+                    channel,
+                    bytes);
         }
     }
 
@@ -77,7 +77,7 @@ public final class SocketWorker {
         Preconditions.checkArgument(bytes != null && bytes.length > 0, "Bytes is required.");
 
         // Currently we only have Protocol V1 - so no special strategy implementation required
-        final var header = Header.of(bytes[0], bytes[1]);
+        final var header = Header.of(bytes[0], bytes[1], bytes[2]);
         Preconditions.checkArgument(header.getVersion() == 0x01,
                 "Protocol Version '{}' is not supported: {}", header.getVersion(), ByteFormatter.formatHexAsString(bytes));
 
@@ -97,27 +97,25 @@ public final class SocketWorker {
      * @param packet the channel packet
      */
     private void actionRead(final ChannelPacket packet) {
-        final var bytes = Arrays.copyOfRange(packet.getBytes(), 2, packet.getBytes().length);
+        final var bytes = Arrays.copyOfRange(packet.getBytes(), 3, packet.getBytes().length);
         final var readRequest = ReadRequestBody.of(bytes);
         final var groupAddress = readRequest.getGroupAddress();
         final var channel = packet.getChannel();
         LOG.debug("Send read request to group address: {}", groupAddress);
 
+        final var action = Action.READ_RESPONSE;
         knxClient.readRequest(groupAddress)
                 .thenAccept(b -> {
-                    // Currently we only have Protocol V1 - so no special strategy implementation required
-                    final var responseHeader = Header.of(1, Action.READ_RESPONSE);
-
                     if (b) {
                         // Success Request
                         LOG.debug("Read Request success for group address: {}", groupAddress);
-                        writeToChannel(channel, responseHeader, ResponseBody.of(false, Status.SUCCESS));
+                        writeToChannel(channel, action, ResponseBody.of(false, Status.SUCCESS));
 
                         // Try to get the KNX status
                         final var value = knxClient.getStatusPool().getStatusFor(groupAddress);
                         if (value == null) {
                             LOG.warn("Could not get read data for group address: {}", groupAddress);
-                            writeToChannel(channel, responseHeader, ResponseBody.of(true, Status.ERROR_TIMEOUT));
+                            writeToChannel(channel, action, ResponseBody.of(true, Status.ERROR_TIMEOUT));
                             return;
                         }
 
@@ -128,18 +126,18 @@ public final class SocketWorker {
                             dpv = dpt.of(value.getData());
                         } catch (final Exception e) {
                             LOG.warn("Could not parse the read data for dpt: {}", dpt);
-                            writeToChannel(channel, responseHeader, ResponseBody.of(true, Status.ERROR_INCOMPATIBLE_DATA_POINT_TYPE));
+                            writeToChannel(channel, action, ResponseBody.of(true, Status.ERROR_INCOMPATIBLE_DATA_POINT_TYPE));
                             return;
                         }
 
                         // Translation successful
                         final var message = dpv.toText() + dpt.getUnit();
                         LOG.debug("Forward text of read request to channel ({}) from {}: {}", channel, groupAddress, message);
-                        writeToChannel(channel, responseHeader, ResponseBody.of(true, Status.SUCCESS, message));
+                        writeToChannel(channel, action, ResponseBody.of(true, Status.SUCCESS, message));
                     } else {
                         // Request failed, No Acknowledge
                         LOG.warn("Read Request failed for group address: {}", groupAddress);
-                        writeToChannel(channel, responseHeader, ResponseBody.of(true, Status.ERROR_REQUEST));
+                        writeToChannel(channel, action, ResponseBody.of(true, Status.ERROR_REQUEST));
                     }
                 });
     }
@@ -150,7 +148,7 @@ public final class SocketWorker {
      * @param packet the channel packet
      */
     private void actionWrite(final ChannelPacket packet) {
-        final var bytes = Arrays.copyOfRange(packet.getBytes(), 2, packet.getBytes().length);
+        final var bytes = Arrays.copyOfRange(packet.getBytes(), 3, packet.getBytes().length);
         final var writeRequest = WriteRequestBody.of(bytes);
         final var dpt = writeRequest.getDataPointType();
         final var dpv = dpt.of(writeRequest.getArguments());
@@ -158,15 +156,14 @@ public final class SocketWorker {
         final var channel = packet.getChannel();
         LOG.debug("Write request: {}", writeRequest);
 
+        final var action = Action.WRITE_RESPONSE;
         knxClient.writeRequest(groupAddress, dpv)
                 .thenAccept(b -> {
-                    // Currently we only have Protocol V1 - so no special strategy implementation required
-                    final var responseHeader = Header.of(1, Action.WRITE_RESPONSE);
                     if (b) {
-                        writeToChannel(channel, responseHeader, ResponseBody.of(true, Status.SUCCESS));
+                        writeToChannel(channel, action, ResponseBody.of(true, Status.SUCCESS));
                         LOG.debug("Write Request was successful for: {}", groupAddress);
                     } else {
-                        writeToChannel(channel, responseHeader, ResponseBody.of(true, Status.ERROR_REQUEST));
+                        writeToChannel(channel, action, ResponseBody.of(true, Status.ERROR_REQUEST));
                         LOG.debug("Write Request was not successful for: {}", groupAddress);
                     }
                 });

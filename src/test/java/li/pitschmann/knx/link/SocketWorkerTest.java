@@ -94,11 +94,11 @@ class SocketWorkerTest {
         final var worker = new SocketWorker(createKnxClientMock());
 
         final var channelPacketMock = mock(ChannelPacket.class);
-        when(channelPacketMock.getBytes()).thenReturn(new byte[]{(byte) 0xFF, 0x00});
+        when(channelPacketMock.getBytes()).thenReturn(new byte[]{(byte) 0xFF, 0x00, 0x00});
 
         assertThatThrownBy(() -> worker.execute(channelPacketMock))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Protocol Version '255' is not supported: 0xFF 00");
+                .hasMessage("Protocol Version '255' is not supported: 0xFF 00 00");
     }
 
     @Test
@@ -107,7 +107,7 @@ class SocketWorkerTest {
         final var worker = new SocketWorker(createKnxClientMock());
 
         final var channelPacketMock = mock(ChannelPacket.class);
-        when(channelPacketMock.getBytes()).thenReturn(new byte[]{0x01, (byte) 0xFF});
+        when(channelPacketMock.getBytes()).thenReturn(new byte[]{0x01, (byte) 0xFF, 0x00});
 
         assertThatThrownBy(() -> worker.execute(channelPacketMock))
                 .isInstanceOf(KnxEnumNotFoundException.class);
@@ -130,7 +130,7 @@ class SocketWorkerTest {
         verify(channelPacketMock.getChannel(), timeout(5000).times(2)).write(argCaptor.capture());
 
         assertThat(argCaptor.getAllValues().stream().map(ByteBuffer::array)
-                .map(a -> ResponseBody.of(Arrays.copyOfRange(a, 2, a.length)))) // first two bytes are "header"
+                .map(a -> ResponseBody.of(Arrays.copyOfRange(a, 3, a.length)))) // first three bytes are "header"
                 .containsExactly(
                         ResponseBody.of(false, Status.SUCCESS),
                         ResponseBody.of(true, Status.SUCCESS, "4711K")
@@ -195,7 +195,7 @@ class SocketWorkerTest {
         verify(channelPacketMock.getChannel(), timeout(5000)).write(argCaptor.capture());
 
         assertThat(argCaptor.getAllValues().stream().map(ByteBuffer::array)
-                .map(a -> ResponseBody.of(Arrays.copyOfRange(a, 2, a.length)))) // first two bytes are "header"
+                .map(a -> ResponseBody.of(Arrays.copyOfRange(a, 3, a.length)))) // first three bytes are "header"
                 .containsExactly(
                         ResponseBody.of(true, Status.SUCCESS)
                 );

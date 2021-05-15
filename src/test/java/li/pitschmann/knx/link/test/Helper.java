@@ -115,13 +115,15 @@ public final class Helper {
                                                 final String groupAddress,
                                                 final @Nullable String dpt,
                                                 final @Nullable String[] arguments) {
-        final var bytes = new byte[500];
+        final var bytes = new byte[256];
         int i = 0;
 
         // Protocol Version 1
         bytes[i++] = 0x01;
         // Action (read, write)
         bytes[i++] = action.getByte();
+        // Length (will be temporarily set here!)
+        bytes[i++] = 0x00;
         // Group Address
         final var groupAddressAsBytes = GroupAddress.of(groupAddress).toByteArray();
         bytes[i++] = groupAddressAsBytes[0];
@@ -152,9 +154,8 @@ public final class Helper {
             }
         }
 
-        if (action == Action.WRITE_REQUEST) {
-            bytes[i++] = 0x00; // +1 for NULL termination
-        }
+        // update (Header.length) with the correct body length
+        bytes[2] = (byte) (i - 3);
 
         return Arrays.copyOf(bytes, i);
     }

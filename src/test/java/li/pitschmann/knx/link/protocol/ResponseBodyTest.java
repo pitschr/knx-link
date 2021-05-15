@@ -37,7 +37,7 @@ class ResponseBodyTest {
         assertThat(body.isLastPacket()).isFalse();
         assertThat(body.getStatus()).isSameAs(Status.SUCCESS);
         assertThat(body.getMessage()).isEmpty();
-        assertThat(body.getBytes()).containsExactly(0x00, 0x00, 0x00);
+        assertThat(body.getBytes()).containsExactly(0x00, 0x00);
 
         assertThat(body).hasToString("ResponseBody{lastPacket=false, status=SUCCESS, message=}");
     }
@@ -50,7 +50,7 @@ class ResponseBodyTest {
         assertThat(body.isLastPacket()).isTrue();
         assertThat(body.getStatus()).isSameAs(Status.SUCCESS);
         assertThat(body.getMessage()).isEqualTo("Hello");
-        assertThat(body.getBytes()).containsExactly(0x80, 0x00, 'H', 'e', 'l', 'l', 'o', 0x00);
+        assertThat(body.getBytes()).containsExactly(0x80, 0x00, 'H', 'e', 'l', 'l', 'o');
 
         assertThat(body).hasToString("ResponseBody{lastPacket=true, status=SUCCESS, message=Hello}");
     }
@@ -68,8 +68,7 @@ class ResponseBodyTest {
                 0x00,               // (Reserved)
                 0xC3, 0xA4,         // ä
                 0xE6, 0xBC, 0xA2,   // 漢
-                0xD0, 0xB8,         // cryllic N
-                0x00                // termination NULL
+                0xD0, 0xB8          // cryllic N
         );
 
         assertThat(body).hasToString("ResponseBody{lastPacket=true, status=ERROR_INCOMPATIBLE_DATA_POINT_TYPE, message=ä漢и}");
@@ -80,18 +79,10 @@ class ResponseBodyTest {
     void test_Bytes_Ctor_Wrong_Length() {
         assertThatThrownBy(() -> ResponseBody.of(null))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Bytes must not be null and minimum 3 bytes: <null>");
-        assertThatThrownBy(() -> ResponseBody.of(new byte[2]))
+                .hasMessage("Bytes must not be null and minimum 2 bytes: <null>");
+        assertThatThrownBy(() -> ResponseBody.of(new byte[1]))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Bytes must not be null and minimum 3 bytes: 0x00 00");
-    }
-
-    @Test
-    @DisplayName("#(bytes) with no Termination Null")
-    void test_Bytes_Ctor_No_Termination_Null() {
-        assertThatThrownBy(() -> ResponseBody.of(new byte[]{0x01, 0x02, 0x03}))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("No Termination NULL?: 0x01 02 03");
+                .hasMessage("Bytes must not be null and minimum 2 bytes: 0x00");
     }
 
     @Test

@@ -33,8 +33,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -48,7 +46,6 @@ public final class TestClient implements AutoCloseable {
     private static final Logger LOG = LoggerFactory.getLogger(TestClient.class);
     private final int serverPort;
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
-    private final List<String> receivedStrings = new ArrayList<>();
     private final List<ResponseBody> receivedResponses = new LinkedList<>();
     private Selector writeSelector;
     private Selector readSelector;
@@ -93,32 +90,6 @@ public final class TestClient implements AutoCloseable {
         if (!result) {
             throw new AssertionError("Not expected responses received: " +
                     "expected=" + Arrays.toString(expectedResponseBodies) + ", actual=" + receivedResponses);
-        }
-    }
-
-    /**
-     * Verifies if the {@code expectedReceivedStrings} has been received by
-     * the current {@link TestClient} within 5 hardcoded-second timeout.
-     *
-     * @param expectedReceivedStrings expected strings to be received; may be empty
-     * @throws AssertionError in case there was a mismatch or timeout occurred first
-     */
-    public void verifyReceivedStrings(String... expectedReceivedStrings) {
-        var result = Sleeper.milliseconds(50, () -> {
-            if (receivedStrings.size() == expectedReceivedStrings.length) {
-                for (var i = 0; i < expectedReceivedStrings.length; i++) {
-                    if (!expectedReceivedStrings[i].equals(receivedStrings.get(i))) {
-                        return false;
-                    }
-                }
-                return true;
-            }
-            return false;
-        }, 5000);
-
-        if (!result) {
-            throw new AssertionError("Not expected received strings: " +
-                    "expected=" + Arrays.toString(expectedReceivedStrings) + ", actual=" + receivedStrings);
         }
     }
 
@@ -240,14 +211,19 @@ public final class TestClient implements AutoCloseable {
                 final var receivedBytes = new byte[byteBuffer.limit()];
                 byteBuffer.get(receivedBytes);
 
-                final var headerBytes = Header.of(receivedBytes[0], receivedBytes[1]);
-                final var responseBytes = ResponseBody.of(Arrays.copyOfRange(receivedBytes, 2, receivedBytes.length));
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Receiving packet: header={}, body={}", headerBytes, responseBytes);
+                var pos = 0;
+                while (receivedBytes.length > pos) {
+                    // reads the header
+                    final var header = Header.of(receivedBytes[0], receivedBytes[1], receivedBytes[2]);
+                    // updates the position
+                    pos = 3 + header.getLength();
+                    // reads the response
+                    final var response = ResponseBody.of(Arrays.copyOfRange(receivedBytes, 3, pos));
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("Receiving packet: header={}, body={}", header, response);
+                    }
+                    receivedResponses.add(response);
                 }
-
-                receivedStrings.add(new String(receivedBytes, StandardCharsets.UTF_8));
-                receivedResponses.add(responseBytes);
             } finally {
                 byteBuffer.clear();
             }

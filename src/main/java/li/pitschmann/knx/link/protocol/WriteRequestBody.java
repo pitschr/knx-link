@@ -47,27 +47,26 @@ import java.util.Arrays;
  *             +-7-+-6-+-5-+-4-+-3-+-2-+-1-+-0-+-7-+-6-+-5-+-4-+-3-+-2-+-1-+-0-+
  *             |                    ... variable length ...                    |
  *             +-7-+-6-+-5-+-4-+-3-+-2-+-1-+-0-+-7-+-6-+-5-+-4-+-3-+-2-+-1-+-0-+
- *             | (Arg Byte N)                    (Terminated by NULL 0x00)     |
+ *             |                                 (Arg Byte N)                  |
  *             +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
  *
- * Length:     Minimum 7 octets (6 octets + N + 1 octets for NULL)
+ * Length:     Minimum 6 octets
  * Fields:
  *             Group Address       (2 octets): [1, 65535]
  *             Data Point Type     (2 octets): [0, 65535]
  *             Data Point Sub Type (2 octets): [0, 65535]
  *             Argument Bytes                : no bytes for 'read request'
  *                                             N bytes for 'write request' (encoded as UTF-8 String)
- *             Terminated by Null  (1 octet) : 0x00
  * </pre>
  *
- * <p> For action <strong>write request (0x00)</strong> the total length may be variable
+ * <p> For action <strong>write request</strong> the total length may be variable
  * but must comply with the <strong>data point type</strong>. The value is UTF-8 string
  * in a byte array and is considered to be sent as data for write request.
  *
  * @author PITSCHR
  */
 public final class WriteRequestBody {
-    private static final int MIN_STRUCTURE_LENGTH = 7;
+    private static final int MIN_STRUCTURE_LENGTH = 6;
     private final GroupAddress groupAddress;
     private final DataPointType dataPointType;
     private final String[] arguments;

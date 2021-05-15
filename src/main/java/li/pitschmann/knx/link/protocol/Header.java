@@ -29,13 +29,14 @@ import java.util.Objects;
  *             +-7-+-6-+-5-+-4-+-3-+-2-+-1-+-0-+-7-+-6-+-5-+-4-+-3-+-2-+-1-+-0-+
  * Field Names | (Version)                     | (Action)                      |
  *             +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
- * Format:     (U<sub>1</sub> U<sub>1</sub>)
- * Length:     2 octets
+ * Format:     (U<sub>1</sub> U<sub>1</sub> U<sub>1</sub>)
+ * Length:     3 octets
  *
  * Fields:
- *             Version             (1 octet) : 0x01
+ *             Version             (1 octet) : the version of protocol packet
  *             Action              (1 octet) : 0x00 = read request
  *                                             0x01 = write request
+ *             Length              (1 octet) : the length of body packet
  * </pre>
  *
  * @author PITSCHR
@@ -43,18 +44,24 @@ import java.util.Objects;
 public final class Header {
     private final int version;
     private final Action action;
+    private final int length;
 
-    private Header(final int version, final Action action) {
+    private Header(final int version, final Action action, final int length) {
         this.version = version;
         this.action = action;
+        this.length = length;
     }
 
-    public static Header of(final int version, final Action action) {
-        return new Header(version, action);
+    public static Header of(final int version, final Action action, final int length) {
+        return new Header(version, action, length);
     }
 
-    public static Header of(final byte versionAsByte, final byte actionAsByte) {
-        return of(Byte.toUnsignedInt(versionAsByte), Action.of(Byte.toUnsignedInt(actionAsByte)));
+    public static Header of(final byte versionAsByte, final byte actionAsByte, final byte lengthAsByte) {
+        return of(
+                Byte.toUnsignedInt(versionAsByte),
+                Action.of(Byte.toUnsignedInt(actionAsByte)),
+                Byte.toUnsignedInt(lengthAsByte)
+        );
     }
 
     public int getVersion() {
@@ -66,20 +73,24 @@ public final class Header {
     }
 
     public byte[] getBytes() {
-        return new byte[]{(byte) version, action.getByte()};
+        return new byte[]{(byte) version, action.getByte(), (byte) length};
+    }
+
+    public int getLength() {
+        return length;
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        Header header = (Header) o;
-        return version == header.version && action == header.action;
+        final var header = (Header) o;
+        return version == header.version && action == header.action && length == header.length;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(version, action);
+        return Objects.hash(version, action, length);
     }
 
     @Override
@@ -87,6 +98,7 @@ public final class Header {
         return Strings.toStringHelper(this)
                 .add("version", version)
                 .add("action", action.name())
+                .add("length", length)
                 .toString();
     }
 }

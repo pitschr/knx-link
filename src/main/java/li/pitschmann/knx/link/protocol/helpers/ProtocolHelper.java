@@ -18,14 +18,11 @@
 package li.pitschmann.knx.link.protocol.helpers;
 
 import li.pitschmann.knx.core.address.GroupAddress;
+import li.pitschmann.knx.core.annotations.Nullable;
 import li.pitschmann.knx.core.datapoint.DPTRaw;
 import li.pitschmann.knx.core.datapoint.DataPointRegistry;
 import li.pitschmann.knx.core.datapoint.DataPointType;
 import li.pitschmann.knx.core.exceptions.KnxDataPointTypeNotFoundException;
-import li.pitschmann.knx.core.utils.ByteFormatter;
-import li.pitschmann.knx.core.utils.Preconditions;
-
-import java.util.Arrays;
 
 /**
  * Helper for Protocol
@@ -78,23 +75,17 @@ public final class ProtocolHelper {
     /**
      * Parses the arguments from byte array for e.g. write request..
      *
-     * <p> If the length of {@code bytes} is 1, then it is supposed that no
-     * argument is present, therefore, an empty byte array is returned.
+     * <p> If the {@code bytes} is {@code null} or length of {@code bytes} is {@code 0},
+     * then it is supposed that no argument is present, therefore, an empty byte array is returned.
      *
-     * @param bytes byte array to be parsed; may not be null
+     * @param bytes byte array to be parsed
      * @return new array of String as arguments; if none, then empty array
      */
-    public static String[] parseArguments(final byte[] bytes) {
-        Preconditions.checkArgument(bytes != null && bytes.length > 0, "Bytes is null or empty?");
-        Preconditions.checkArgument(bytes[bytes.length - 1] == 0x00,
-                "No NULL termination?: {}",
-                ByteFormatter.formatHexAsString(bytes));
-
-        if (bytes.length == 1) {
+    public static String[] parseArguments(final @Nullable byte[] bytes) {
+        if (bytes == null || bytes.length == 0) {
             return new String[0];
         } else {
-            final var valuesAsArray = Arrays.copyOfRange(bytes, 0, bytes.length - 1);
-            return ArgumentHelper.toList(valuesAsArray).toArray(new String[0]);
+            return ArgumentHelper.toList(bytes).toArray(new String[0]);
         }
     }
 
