@@ -216,7 +216,7 @@ public final class TestClient implements AutoCloseable {
                     // reads the header
                     final var header = Header.of(receivedBytes[0], receivedBytes[1], receivedBytes[2]);
                     // updates the position
-                    pos = 3 + header.getLength();
+                    pos += 3 + header.getLength();
                     // reads the response
                     final var response = ResponseBody.of(Arrays.copyOfRange(receivedBytes, 3, pos));
                     if (LOG.isDebugEnabled()) {
