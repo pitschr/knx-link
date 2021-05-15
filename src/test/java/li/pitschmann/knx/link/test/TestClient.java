@@ -203,7 +203,9 @@ public final class TestClient implements AutoCloseable {
             LOG.debug("*** START ({}) ***", this);
             try {
                 while (!Thread.currentThread().isInterrupted()) {
-                    readSelector.select();
+                    if (readSelector.select() == 0) {
+                        continue;
+                    }
                     final var selectedKeys = readSelector.selectedKeys().iterator();
                     while (selectedKeys.hasNext()) {
                         final var key = selectedKeys.next();
