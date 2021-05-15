@@ -214,11 +214,12 @@ public final class TestClient implements AutoCloseable {
                 var pos = 0;
                 while (receivedBytes.length > pos) {
                     // reads the header
-                    final var header = Header.of(receivedBytes[0], receivedBytes[1], receivedBytes[2]);
-                    // updates the position
-                    pos += 3 + header.getLength();
+                    final var header = Header.of(receivedBytes[pos++], receivedBytes[pos++], receivedBytes[pos++]);
                     // reads the response
-                    final var response = ResponseBody.of(Arrays.copyOfRange(receivedBytes, 3, pos));
+                    final var responseBytes = Arrays.copyOfRange(receivedBytes, pos, pos + header.getLength());
+                    // updates the position
+                    pos += responseBytes.length;
+                    final var response = ResponseBody.of(responseBytes);
                     if (LOG.isDebugEnabled()) {
                         LOG.debug("Receiving packet: header={}, body={}", header, response);
                     }
