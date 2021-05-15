@@ -41,7 +41,7 @@ jobs:
 
       # Compile & Test & Calculate Coverage
       - name: Compile & Test
-        run: mvn clean test jacoco:report -B -P github-actions
+        run: mvn clean package jacoco:report -B -P github-actions
 
       # Submit the code coverage to coveralls.io
       - name: Submit Code Coverage
