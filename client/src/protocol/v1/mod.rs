@@ -15,18 +15,5 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::protocol_v1::action::Action;
 
-pub struct Header {
-    action: Action,
-}
-
-impl Header {
-    pub fn new(action: Action) -> Self {
-        Header { action }
-    }
-
-    pub fn action(&self) -> &Action {
-        &self.action
-    }
-}
+pub mod protocol;

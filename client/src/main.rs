@@ -1,20 +1,20 @@
 use std::net::IpAddr;
+use std::process::exit;
 
 use clap::Clap;
 
-use crate::protocol_v1::action::Action;
-use crate::protocol_v1::protocol::Protocol;
-use crate::protocol_v1::header::Header;
-use std::process::exit;
-use crate::client::client::Client;
+use client::client::Client;
+use protocol::action::Action;
+use protocol::v1::protocol::Protocol;
 
 mod address;
 mod datapoint;
 mod client;
-pub mod protocol_v1;
+mod client2;
+mod protocol;
 
 #[derive(Clap)]
-#[clap(name="KNX Client", about="A client to send/receive KNX commands to/from KNX-Link Server", version="0.1")]
+#[clap(name = "KNX Client", about = "A client to send/receive KNX commands to/from KNX-Link Server", version = "0.1")]
 struct Opts {
     #[clap(short = 'h', long, default_value = "127.0.0.1")]
     #[clap(about = "Defines the hostname of the KNX-Link Server")]
@@ -86,30 +86,30 @@ fn main() {
     match opts.subcmd {
         SubCommand::Read(r) => {
             match Protocol::as_bytes(
-                Header::new(Action::ReadRequest),
+                Action::ReadRequest,
                 r.group_address.as_str(),
                 r.data_point_type.as_str(),
-                vec![]
+                vec![],
             ) {
                 Ok(bytes) => {
                     Client::send_bytes(opts.host, opts.port, bytes)
-                },
+                }
                 Err(err) => {
                     eprintln!("Error during read request. Error: {:?}", err);
                     exit(10);
                 }
             }
-        },
+        }
         SubCommand::Write(w) => {
             match Protocol::as_bytes(
-                Header::new(Action::WriteRequest),
+                Action::WriteRequest,
                 w.group_address.as_str(),
                 w.data_point_type.as_str(),
-                w.value.split(" ").collect()
+                w.value.split(" ").collect(),
             ) {
                 Ok(bytes) => {
                     Client::send_bytes(opts.host, opts.port, bytes)
-                },
+                }
                 Err(err) => {
                     eprintln!("Error during write request. Error: {:?}", err);
                     exit(20);

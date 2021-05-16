@@ -15,16 +15,34 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#[derive(Copy, Clone)]
 pub enum Action {
     ReadRequest,
     WriteRequest,
 }
 
-impl Action {
-    pub fn value(&self) -> u8 {
+impl Into<u8> for Action {
+    fn into(self) -> u8 {
         match self {
             Action::ReadRequest => 0x00,
             Action::WriteRequest => 0x01,
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_into_read() {
+        let x : u8 = Action::ReadRequest.into();
+        assert_eq!(x, 0_u8);
+    }
+
+    #[test]
+    fn test_into_write() {
+        let x : u8 = Action::WriteRequest.into();
+        assert_eq!(x, 1_u8);
     }
 }

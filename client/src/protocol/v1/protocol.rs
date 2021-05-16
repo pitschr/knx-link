@@ -19,8 +19,8 @@ use std::convert::TryFrom;
 
 use crate::address::group_address::{GroupAddress, GroupAddressBytes};
 use crate::datapoint::datapoint::DataPoint;
-use crate::protocol_v1::action::Action;
-use crate::protocol_v1::header::Header;
+use crate::protocol::action::Action;
+use crate::protocol::header::Header;
 
 #[derive(Debug)]
 pub struct ProtocolError;
@@ -28,32 +28,43 @@ pub struct ProtocolError;
 pub struct Protocol;
 
 impl Protocol {
-    pub fn as_bytes(header: Header, group_address: &str, datapoint: &str, values: Vec<&str>) -> Result<Vec<u8>, ProtocolError> {
-        let mut ve = Vec::<u8>::with_capacity(255);
-
-        // protocol version
-        ve.push(0x01);
-
-        // action (read, write)
-        ve.push(header.action().value());
+    pub fn as_bytes(action: Action, group_address: &str, datapoint: &str, values: Vec<&str>) -> Result<Vec<u8>, ProtocolError> {
+        //
+        // Body
+        //
+        let mut body = Vec::<u8>::with_capacity(250);
 
         // Group Address (2 bytes)
-        for j in GroupAddress::try_from(group_address).unwrap().as_bytes().iter() {
-            ve.push(*j);
+        for i in GroupAddress::try_from(group_address).unwrap().as_bytes().iter() {
+            body.push(*i);
         }
 
         // Data Point (4 bytes)
         for i in DataPoint::try_from(datapoint).unwrap().as_bytes().iter() {
-            ve.push(*i);
+            body.push(*i);
         }
 
         // Values
         // * Read = 0 bytes
-        // * Write = N bytes + 1 byte for termination NULL
-        if let Action::WriteRequest = header.action() {
+        // * Write = N bytes
+        if let Action::WriteRequest = action {
             for i in Protocol::convert_values_to_utf8_bytes(values).iter() {
-                ve.push(*i);
+                body.push(*i);
             }
+        }
+
+        //
+        // Header
+        //
+        let header = Header::new(action, body.len() as u8).as_bytes();
+
+        // Now glue Header + Body
+        let mut ve = Vec::<u8>::with_capacity(255);
+        for i in &header {
+            ve.push(*i);
+        }
+        for i in &body {
+            ve.push(*i);
         }
 
         Ok(ve)
@@ -73,9 +84,6 @@ impl Protocol {
             ve.push(0x22); // "
             count += 1;
         }
-
-        // termination NULL
-        ve.push(0x00);
         ve
     }
 }
@@ -86,10 +94,11 @@ mod test {
 
     #[test]
     fn test_read_request() {
-        assert_eq!(Protocol::as_bytes(Header::new(Action::ReadRequest), "1/2/3", "4711.32109", vec![]).unwrap(),
+        assert_eq!(Protocol::as_bytes(Action::ReadRequest, "1/2/3", "4711.32109", vec![]).unwrap(),
                    [
                        0x01,                       // Protocol Version
-                       0x00,                       // Write Request
+                       0x00,                       // Read Request
+                       0x06,                       // Body Length (6 octets)
                        0x0A, 0x03,                 // Group Address
                        0x12, 0x67, 0x7D, 0x6D      // Data Point Type
                    ]
@@ -98,35 +107,30 @@ mod test {
 
     #[test]
     fn test_write_request() {
-        assert_eq!(Protocol::as_bytes(Header::new(Action::WriteRequest), "1/2/3", "4711.32109", vec!["Hello", "World"]).unwrap(),
+        assert_eq!(Protocol::as_bytes(Action::WriteRequest, "1/2/3", "4711.32109", vec!["Hello", "World"]).unwrap(),
                    [
                        0x01,                                           // Protocol Version
-                       0x01,                                           // WriteRequest
+                       0x01,                                           // Write Request
+                       0x15,                                           // Body Length (21 octets)
                        0x0A, 0x03,                                     // Group Address
                        0x12, 0x67, 0x7D, 0x6D,                         // Data Point Type
                        b'"', b'H', b'e', b'l', b'l', b'o', b'"',       // Values (within double-quote characters)
                        b' ',                                           // (Space)
                        b'"', b'W', b'o', b'r', b'l', b'd', b'"',       // Values, continued
-                       0x00                                            // Termination NULL
                    ]
         );
     }
 
     #[test]
     fn test_convert_empty() {
-        assert_eq!(Protocol::convert_values_to_utf8_bytes(vec![]),
-                   [
-                       0x00     // only termination NULL
-                   ]
-        );
+        assert_eq!(Protocol::convert_values_to_utf8_bytes(vec![]), []);
     }
 
     #[test]
     fn test_convert_simple_ascii() {
         assert_eq!(Protocol::convert_values_to_utf8_bytes(vec!["abc"]),
                    [
-                       b'"', b'a', b'b', b'c', b'"',
-                       0x00
+                       b'"', b'a', b'b', b'c', b'"'
                    ]
         );
     }
@@ -142,7 +146,6 @@ mod test {
                        0xE6, 0x9F, 0xBB,    // 査
                        0xD0, 0xB4,          // д
                        b'"',
-                       0x00                 // termination NULL
                    ]
         );
     }
@@ -156,7 +159,6 @@ mod test {
                        b'"', b'1', b'2', b'3', b'"',   // 123
                        b' ',                           // space
                        b'"', b'$', b'%', b'&', b'"',   // $%&
-                       0x00                            // termination NULL
                    ]
         );
     }
@@ -172,7 +174,6 @@ mod test {
                        b'"', 0xD1, 0x81, 0xD0, 0xB8, 0xD1, 0x82, b'"',              // сит
                        b' ',                                                        // space
                        b'"', 0xF0, 0x9F, 0x98, 0x80, 0xF0, 0x9F, 0x98, 0x82, b'"',  // 😀😂
-                       0x00                                                         // termination NULL
                    ]
         );
     }

@@ -15,11 +15,11 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::net::{IpAddr, TcpStream, SocketAddr};
-use std::time::Duration;
-use std::io::{Write, Read};
-use std::str::from_utf8;
+use std::io::{Read, Write};
+use std::net::{IpAddr, SocketAddr, TcpStream};
 use std::process::exit;
+use std::str::from_utf8;
+use std::time::Duration;
 
 pub struct Client;
 
@@ -31,7 +31,7 @@ impl Client {
                 stream.set_write_timeout(Some(Duration::from_secs(3))).expect("Could not set write timeout.");
 
                 match stream.write(bytes.as_slice()) {
-                    Ok(_) => {},
+                    Ok(_) => {}
                     Err(e) => {
                         eprintln!("Failed to send data: {:?}", e.kind());
                         exit(30);
@@ -42,7 +42,12 @@ impl Client {
                 match stream.read(&mut data) {
                     Ok(_) => {
                         let text = from_utf8(&data).unwrap();
-                        println!("Got Reply from KNX-Link Server: '{}'", text);
+                        if text.starts_with("FAILED") {
+                            eprintln!("Got ERR Reply from KNX-Link Server: {}", text);
+                            exit(33);
+                        } else {
+                            println!("Got Reply from KNX-Link Server: '{}'", text);
+                        }
                     }
                     Err(e) => {
                         eprintln!("Failed to receive data: {:?}", e.kind());
