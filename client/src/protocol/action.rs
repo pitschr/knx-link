@@ -15,10 +15,27 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#[derive(Copy, Clone)]
+use std::convert::TryFrom;
+
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Action {
     ReadRequest,
     WriteRequest,
+}
+
+#[derive(Debug)]
+pub struct ActionNotFoundError;
+
+impl TryFrom<u8> for Action {
+    type Error = ActionNotFoundError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Action::ReadRequest),
+            1 => Ok(Action::WriteRequest),
+            _ => Err(ActionNotFoundError {})
+        }
+    }
 }
 
 impl Into<u8> for Action {
@@ -44,5 +61,16 @@ mod test {
     fn test_into_write() {
         let x : u8 = Action::WriteRequest.into();
         assert_eq!(x, 1_u8);
+    }
+
+    #[test]
+    fn test_try_from() {
+        assert_eq!(Action::try_from(0).unwrap(), Action::ReadRequest);
+        assert_eq!(Action::try_from(1).unwrap(), Action::WriteRequest);
+    }
+
+    #[test]
+    fn test_try_from_err() {
+        assert!(Action::try_from(255).is_err())
     }
 }

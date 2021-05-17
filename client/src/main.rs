@@ -10,7 +10,6 @@ use protocol::v1::protocol::Protocol;
 mod address;
 mod datapoint;
 mod client;
-mod client2;
 mod protocol;
 
 #[derive(Clap)]

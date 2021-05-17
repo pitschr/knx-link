@@ -20,6 +20,8 @@ use std::net::{IpAddr, SocketAddr, TcpStream};
 use std::process::exit;
 use std::str::from_utf8;
 use std::time::Duration;
+use crate::protocol::header::Header;
+use std::convert::TryFrom;
 
 pub struct Client;
 
@@ -41,12 +43,27 @@ impl Client {
                 let mut data = [0 as u8; 255];
                 match stream.read(&mut data) {
                     Ok(_) => {
-                        let text = from_utf8(&data).unwrap();
-                        if text.starts_with("FAILED") {
-                            eprintln!("Got ERR Reply from KNX-Link Server: {}", text);
-                            exit(33);
+                        let header = Header::try_from(&data)
+                            .expect(format!("Could not parse Header from: {:?}", &data).as_str());
+
+                        if header.version() == 1 {
+                            // Valid version
+                            let body = ResponseBody::try_from(&data[3..3 + header.length()])
+                                .expect(format!("Could not parse Response from: {:?}", &data).as_str());
+
+                            body.lastPacket();
+                            body.status();
+                            body.message();
+                            let text = from_utf8(&data).unwrap();
+                            if text.starts_with("FAILED") {
+                                eprintln!("Got ERR Reply from KNX-Link Server: {}", text);
+                                exit(33);
+                            } else {
+                                println!("Got Reply from KNX-Link Server: '{}'", text);
+                            }
+
                         } else {
-                            println!("Got Reply from KNX-Link Server: '{}'", text);
+                            panic!("Invalid version ({}) received for: {:?}", header.version(), &data);
                         }
                     }
                     Err(e) => {

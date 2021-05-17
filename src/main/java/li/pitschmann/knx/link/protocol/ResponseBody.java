@@ -18,6 +18,7 @@
 package li.pitschmann.knx.link.protocol;
 
 import li.pitschmann.knx.core.annotations.Nullable;
+import li.pitschmann.knx.core.utils.ByteFormatter;
 import li.pitschmann.knx.core.utils.Preconditions;
 import li.pitschmann.knx.core.utils.Strings;
 import li.pitschmann.knx.link.Status;
@@ -68,30 +69,40 @@ public final class ResponseBody {
     private static final int MIN_STRUCTURE_LENGTH = 2;
     private final boolean lastPacket;
     private final Status status;
-    private final String message;
+    private final byte[] data;
 
-    private ResponseBody(final boolean lastPacket, final Status status, final @Nullable String message) {
+    private ResponseBody(final boolean lastPacket, final Status status, final byte[] data) {
         this.lastPacket = lastPacket;
         this.status = Objects.requireNonNull(status);
-        this.message = message == null ? "" : message;
+        this.data = data.clone();
     }
 
     private ResponseBody(final byte[] bytes) {
         this.lastPacket = (bytes[0] & 0x80) == 0x80;
         this.status = Status.of(bytes[0] & 0xF);
         if (bytes.length == 2) {
-            this.message = "";
+            this.data = new byte[0];
         } else {
-            this.message = new String(Arrays.copyOfRange(bytes, 2, bytes.length), StandardCharsets.UTF_8);
+            this.data = Arrays.copyOfRange(bytes, 2, bytes.length);
         }
     }
 
     public static ResponseBody of(final boolean lastPacket, final Status status) {
-        return of(lastPacket, status, null);
+        return of(lastPacket, status, new byte[0]);
+    }
+
+    public static ResponseBody of(final boolean lastPacket, final Status status, final byte[] data) {
+        return new ResponseBody(lastPacket, status, data);
     }
 
     public static ResponseBody of(final boolean lastPacket, final Status status, final @Nullable String message) {
-        return new ResponseBody(lastPacket, status, message);
+        final byte[] data;
+        if (message == null || message.isBlank()) {
+            data = new byte[0];
+        } else {
+            data = message.getBytes(StandardCharsets.UTF_8);
+        }
+        return of(lastPacket, status, data);
     }
 
     public static ResponseBody of(final byte[] bytes) {
@@ -108,8 +119,8 @@ public final class ResponseBody {
         return status;
     }
 
-    public String getMessage() {
-        return message;
+    public byte[] getData() {
+        return data;
     }
 
     private byte getByte1() {
@@ -123,11 +134,10 @@ public final class ResponseBody {
     }
 
     public byte[] getBytes() {
-        final var bytes = getMessage().getBytes(StandardCharsets.UTF_8);
-        final var newBytes = new byte[bytes.length + 2];
+        final var newBytes = new byte[data.length + 2];
         newBytes[0] = getByte1();
         newBytes[1] = getByte2();
-        System.arraycopy(bytes, 0, newBytes, 2, bytes.length);
+        System.arraycopy(data, 0, newBytes, 2, data.length);
         return newBytes;
     }
 
@@ -136,20 +146,28 @@ public final class ResponseBody {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         final var other = (ResponseBody) o;
-        return lastPacket == other.lastPacket && status == other.status && Objects.equals(message, other.message);
+        return lastPacket == other.lastPacket && status == other.status && Arrays.equals(data, other.data);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(lastPacket, status, message);
+        return Objects.hash(lastPacket, status, Arrays.hashCode(data));
     }
 
     @Override
     public String toString() {
-        return Strings.toStringHelper(this)
+        final var sb = Strings.toStringHelper(this)
                 .add("lastPacket", lastPacket)
                 .add("status", status.name())
-                .add("message", message)
-                .toString();
+                .add("data", ByteFormatter.formatHexAsString(data));
+
+        // try as string
+        try {
+            sb.add("data(String)", new String(data, StandardCharsets.UTF_8));
+        } catch (final Exception ignore) {
+            // ignore
+        }
+
+        return sb.toString();
     }
 }

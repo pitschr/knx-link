@@ -32,37 +32,47 @@ class ResponseBodyTest {
     @Test
     @DisplayName("Success: Not Last Packet, No Message")
     void test_Success_NotLastPacket_NoMessage() {
-        final var body = ResponseBody.of(false, Status.SUCCESS, null);
+        final var body = ResponseBody.of(false, Status.SUCCESS);
 
         assertThat(body.isLastPacket()).isFalse();
         assertThat(body.getStatus()).isSameAs(Status.SUCCESS);
-        assertThat(body.getMessage()).isEmpty();
+        assertThat(body.getData()).isEmpty();
         assertThat(body.getBytes()).containsExactly(0x00, 0x00);
 
-        assertThat(body).hasToString("ResponseBody{lastPacket=false, status=SUCCESS, message=}");
+        assertThat(body).hasToString("ResponseBody{lastPacket=false, status=SUCCESS, data=, data(String)=}");
     }
 
     @Test
-    @DisplayName("Success: Last Packet, Message = 'Hello'")
-    void test_Success_LastPacket_MessageAscii() {
+    @DisplayName("Success: Last Packet, Data as ASCII String = 'Hello'")
+    void test_Success_LastPacket_ASCII() {
         final var body = ResponseBody.of(true, Status.SUCCESS, "Hello");
 
         assertThat(body.isLastPacket()).isTrue();
         assertThat(body.getStatus()).isSameAs(Status.SUCCESS);
-        assertThat(body.getMessage()).isEqualTo("Hello");
+        assertThat(body.getData()).containsExactly('H', 'e', 'l', 'l', 'o');
         assertThat(body.getBytes()).containsExactly(0x80, 0x00, 'H', 'e', 'l', 'l', 'o');
 
-        assertThat(body).hasToString("ResponseBody{lastPacket=true, status=SUCCESS, message=Hello}");
+        assertThat(body).hasToString(
+                "ResponseBody{" +
+                        "lastPacket=true, " +
+                        "status=SUCCESS, " +
+                        "data=0x48 65 6C 6C 6F, " +
+                        "data(String)=Hello" +
+                        "}");
     }
 
     @Test
-    @DisplayName("Error: Not Last Packet, Message = 'ä漢и'")
-    void test_Success_LastPacket_MessageUTF8() {
+    @DisplayName("Error: Not Last Packet, Data as UTF-8 String = 'ä漢и'")
+    void test_Success_LastPacket_UTF8() {
         final var body = ResponseBody.of(true, Status.ERROR_INCOMPATIBLE_DATA_POINT_TYPE, "ä漢и");
 
         assertThat(body.isLastPacket()).isTrue();
         assertThat(body.getStatus()).isSameAs(Status.ERROR_INCOMPATIBLE_DATA_POINT_TYPE);
-        assertThat(body.getMessage()).isEqualTo("ä漢и");
+        assertThat(body.getData()).containsExactly(
+                0xC3, 0xA4,         // ä
+                0xE6, 0xBC, 0xA2,   // 漢
+                0xD0, 0xB8          // cryllic N
+        );
         assertThat(body.getBytes()).containsExactly(
                 0x85,               // Last Packet + Error
                 0x00,               // (Reserved)
@@ -71,7 +81,36 @@ class ResponseBodyTest {
                 0xD0, 0xB8          // cryllic N
         );
 
-        assertThat(body).hasToString("ResponseBody{lastPacket=true, status=ERROR_INCOMPATIBLE_DATA_POINT_TYPE, message=ä漢и}");
+        assertThat(body).hasToString(
+                "ResponseBody{" +
+                        "lastPacket=true, " +
+                        "status=ERROR_INCOMPATIBLE_DATA_POINT_TYPE, " +
+                        "data=0xC3 A4 E6 BC A2 D0 B8, " +
+                        "data(String)=ä漢и" +
+                        "}");
+    }
+
+    @Test
+    @DisplayName("Error: Not Last Packet, Data as byte array")
+    void test_Success_LastPacket_ByteArray() {
+        final var body = ResponseBody.of(false, Status.ERROR_TIMEOUT, new byte[]{(byte) 0x81, (byte) 0x83, (byte) 0x85});
+
+        assertThat(body.isLastPacket()).isFalse();
+        assertThat(body.getStatus()).isSameAs(Status.ERROR_TIMEOUT);
+        assertThat(body.getData()).containsExactly(0x81, 0x83, 0x85);
+        assertThat(body.getBytes()).containsExactly(
+                0x03,               // Last Packet + Error
+                0x00,               // (Reserved)
+                0x81, 0x83, 0x85    // Byte Array
+        );
+
+        assertThat(body).hasToString(
+                "ResponseBody{" +
+                        "lastPacket=false, " +
+                        "status=ERROR_TIMEOUT, " +
+                        "data=0x81 83 85, " +
+                        "data(String)=���" +
+                        "}");
     }
 
     @Test

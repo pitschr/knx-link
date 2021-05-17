@@ -56,9 +56,11 @@ impl Protocol {
         //
         // Header
         //
-        let header = Header::new(action, body.len() as u8).as_bytes();
+        let header = Header::new(1, action, body.len() as u8).as_bytes();
 
-        // Now glue Header + Body
+        //
+        // Glue Header + Body
+        //
         let mut ve = Vec::<u8>::with_capacity(255);
         for i in &header {
             ve.push(*i);
