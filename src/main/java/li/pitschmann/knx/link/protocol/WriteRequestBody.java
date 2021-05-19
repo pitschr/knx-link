@@ -31,8 +31,8 @@ import java.util.Arrays;
  * <pre>
  *             +-7-+-6-+-5-+-4-+-3-+-2-+-1-+-0-+-7-+-6-+-5-+-4-+-3-+-2-+-1-+-0-+
  *             |                                                               |
- *             |                       HEADER (2 octets)                       |
- *             |                (Protocol Version, Action Type)                |
+ *             |                       HEADER (3 octets)                       |
+ *             |            (Protocol Version, Action Type, Length)            |
  *             |                                                               |
  *             +-7-+-6-+-5-+-4-+-3-+-2-+-1-+-0-+-7-+-6-+-5-+-4-+-3-+-2-+-1-+-0-+
  * Field Names | (Group Address)                                               |
