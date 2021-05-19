@@ -17,56 +17,64 @@
 
 use std::convert::TryFrom;
 
+/// Action enumeration that should represent the body payload
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Action {
     ReadRequest,
     WriteRequest,
+    ReadResponse,
+    WriteResponse,
 }
 
+/// Error in case no suitable [`Action`] could be found
 #[derive(Debug)]
-pub struct ActionNotFoundError;
+pub struct UnknownActionError;
 
 impl TryFrom<u8> for Action {
-    type Error = ActionNotFoundError;
+    type Error = UnknownActionError;
 
+    /// Converts a byte to [`Action`]. Returns [`UnknownActionError`] if the
+    /// value of byte is not registered.
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
             0 => Ok(Action::ReadRequest),
             1 => Ok(Action::WriteRequest),
-            _ => Err(ActionNotFoundError {})
+            2 => Ok(Action::ReadResponse),
+            3 => Ok(Action::WriteResponse),
+            _ => Err(UnknownActionError {})
         }
     }
 }
 
-impl Into<u8> for Action {
-    fn into(self) -> u8 {
-        match self {
-            Action::ReadRequest => 0x00,
-            Action::WriteRequest => 0x01,
+impl From<Action> for u8 {
+    fn from(action: Action) -> Self {
+        match action {
+            Action::ReadRequest => 0,
+            Action::WriteRequest => 1,
+            Action::ReadResponse => 2,
+            Action::WriteResponse => 3,
         }
     }
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     #[test]
-    fn test_into_read() {
-        let x : u8 = Action::ReadRequest.into();
-        assert_eq!(x, 0_u8);
+    fn test_byte_representation() {
+        assert_eq!(u8::from(Action::ReadRequest), 0);
+        assert_eq!(u8::from(Action::WriteRequest), 1);
+        assert_eq!(u8::from(Action::ReadResponse), 2);
+        assert_eq!(u8::from(Action::WriteResponse), 3);
     }
 
     #[test]
-    fn test_into_write() {
-        let x : u8 = Action::WriteRequest.into();
-        assert_eq!(x, 1_u8);
-    }
-
-    #[test]
-    fn test_try_from() {
-        assert_eq!(Action::try_from(0).unwrap(), Action::ReadRequest);
-        assert_eq!(Action::try_from(1).unwrap(), Action::WriteRequest);
+    fn test_conversion() {
+        assert_eq!(Action::ReadRequest, Action::try_from(u8::from(Action::ReadRequest)).unwrap());
+        assert_eq!(Action::WriteRequest, Action::try_from(u8::from(Action::WriteRequest)).unwrap());
+        assert_eq!(Action::ReadResponse, Action::try_from(u8::from(Action::ReadResponse)).unwrap());
+        assert_eq!(Action::WriteResponse, Action::try_from(u8::from(Action::WriteResponse)).unwrap());
     }
 
     #[test]

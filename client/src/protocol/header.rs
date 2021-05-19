@@ -18,6 +18,21 @@
 use crate::protocol::action::Action;
 use std::convert::TryFrom;
 
+/// Header
+///
+/// ```
+///             +-7-+-6-+-5-+-4-+-3-+-2-+-1-+-0-+-7-+-6-+-5-+-4-+-3-+-2-+-1-+-0-+
+/// Field Names | (Version)                     | (Action)                      |
+///             +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+/// Format:     (U<sub>1</sub> U<sub>1</sub> U<sub>1</sub>)
+/// Length:     3 octets
+///
+/// Fields:
+///             Version             (1 octet) : the version of protocol packet
+///             Action              (1 octet) : 0x00 = read request
+///                                             0x01 = write request
+///             Length              (1 octet) : the length of body packet
+/// ```
 #[derive(Debug, PartialEq)]
 pub struct Header {
     version: u8,
@@ -25,6 +40,7 @@ pub struct Header {
     length: u8,
 }
 
+/// Error for Header
 #[derive(Debug)]
 pub struct HeaderError;
 
@@ -33,6 +49,7 @@ impl Header {
         Header { version, action, length }
     }
 
+    /// Get the [`Header`] as a 3-byte-array representation
     pub fn as_bytes(&self) -> [u8; 3] {
         let mut bytes = [0u8; 3];
         bytes[0] = self.version;
@@ -41,14 +58,17 @@ impl Header {
         return bytes;
     }
 
+    /// Get the version
     pub fn version(&self) -> u8 {
         self.version
     }
 
+    /// Get the [`Action`] indicating the type of the body payload
     pub fn action(&self) -> Action {
         self.action
     }
 
+    /// Get the length of body payload
     pub fn length(&self) -> u8 {
         self.length
     }
@@ -57,6 +77,8 @@ impl Header {
 impl <const N: usize> TryFrom<&[u8; N]> for Header {
     type Error = HeaderError;
 
+    /// Converts the array to [`Header`]. The array must be minimum 3 bytes, and
+    /// only first 3 bytes are considered for conversion, the rest are ignored.
     fn try_from(value: &[u8; N]) -> Result<Self, Self::Error> {
         if N >= 3 {
             Ok(Header::new(
