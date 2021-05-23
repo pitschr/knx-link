@@ -4,8 +4,6 @@ use std::process::exit;
 use clap::Clap;
 
 use client::client::Client;
-use protocol::action::Action;
-use protocol::v1::protocol::Protocol;
 
 mod address;
 mod datapoint;
@@ -84,11 +82,9 @@ fn main() {
 
     match opts.subcmd {
         SubCommand::Read(r) => {
-            match Protocol::as_bytes(
-                Action::ReadRequest,
+            match protocol::v1::read_request_body::ReadRequestBody::as_bytes(
                 r.group_address.as_str(),
                 r.data_point_type.as_str(),
-                vec![],
             ) {
                 Ok(bytes) => {
                     Client::send_bytes(opts.host, opts.port, bytes)
@@ -100,8 +96,7 @@ fn main() {
             }
         }
         SubCommand::Write(w) => {
-            match Protocol::as_bytes(
-                Action::WriteRequest,
+            match protocol::v1::write_request_body::WriteRequestBody::as_bytes(
                 w.group_address.as_str(),
                 w.data_point_type.as_str(),
                 w.value.split(" ").collect(),
@@ -116,6 +111,4 @@ fn main() {
             }
         }
     }
-
-    ;
 }

@@ -16,6 +16,7 @@
  */
 
 use std::convert::TryFrom;
+use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
@@ -27,6 +28,8 @@ use crate::address::group_address_two_level::GroupAddressTwoLevel;
 pub struct GroupAddressError {
     message: String,
 }
+
+impl Error for GroupAddressError {}
 
 impl GroupAddressError {
     pub fn new(message: String) -> Self {

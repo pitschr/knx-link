@@ -15,64 +15,33 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::convert::TryFrom;
-
-use crate::address::group_address::{GroupAddress, GroupAddressBytes};
-use crate::datapoint::datapoint::DataPoint;
-use crate::protocol::action::Action;
-use crate::protocol::header::Header;
+use std::error::Error;
+use std::fmt;
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug)]
-pub struct ProtocolError;
+pub struct ProtocolError {
+    message: String,
+}
+
+impl Error for ProtocolError {}
+
+impl Display for ProtocolError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl ProtocolError {
+    pub fn new(message: String) -> Self {
+        ProtocolError { message }
+    }
+}
 
 pub struct Protocol;
 
 impl Protocol {
-    pub fn as_bytes(action: Action, group_address: &str, datapoint: &str, values: Vec<&str>) -> Result<Vec<u8>, ProtocolError> {
-        //
-        // Body
-        //
-        let mut body = Vec::<u8>::with_capacity(250);
-
-        // Group Address (2 bytes)
-        for i in GroupAddress::try_from(group_address).unwrap().as_bytes().iter() {
-            body.push(*i);
-        }
-
-        // Data Point (4 bytes)
-        for i in DataPoint::try_from(datapoint).unwrap().as_bytes().iter() {
-            body.push(*i);
-        }
-
-        // Values
-        // * Read = 0 bytes
-        // * Write = N bytes
-        if let Action::WriteRequest = action {
-            for i in Protocol::convert_values_to_utf8_bytes(values).iter() {
-                body.push(*i);
-            }
-        }
-
-        //
-        // Header
-        //
-        let header = Header::new(1, action, body.len() as u8).as_bytes();
-
-        //
-        // Glue Header + Body
-        //
-        let mut ve = Vec::<u8>::with_capacity(255);
-        for i in &header {
-            ve.push(*i);
-        }
-        for i in &body {
-            ve.push(*i);
-        }
-
-        Ok(ve)
-    }
-
-    fn convert_values_to_utf8_bytes(values: Vec<&str>) -> Vec<u8> {
+    pub(crate) fn convert_values_to_utf8_bytes(values: Vec<&str>) -> Vec<u8> {
         let mut ve = Vec::with_capacity(255);
         let mut count = 0_u8;
         for value in values {
@@ -93,35 +62,6 @@ impl Protocol {
 #[cfg(test)]
 mod test {
     use super::*;
-
-    #[test]
-    fn test_read_request() {
-        assert_eq!(Protocol::as_bytes(Action::ReadRequest, "1/2/3", "4711.32109", vec![]).unwrap(),
-                   [
-                       0x01,                       // Protocol Version
-                       0x00,                       // Read Request
-                       0x06,                       // Body Length (6 octets)
-                       0x0A, 0x03,                 // Group Address
-                       0x12, 0x67, 0x7D, 0x6D      // Data Point Type
-                   ]
-        );
-    }
-
-    #[test]
-    fn test_write_request() {
-        assert_eq!(Protocol::as_bytes(Action::WriteRequest, "1/2/3", "4711.32109", vec!["Hello", "World"]).unwrap(),
-                   [
-                       0x01,                                           // Protocol Version
-                       0x01,                                           // Write Request
-                       0x15,                                           // Body Length (21 octets)
-                       0x0A, 0x03,                                     // Group Address
-                       0x12, 0x67, 0x7D, 0x6D,                         // Data Point Type
-                       b'"', b'H', b'e', b'l', b'l', b'o', b'"',       // Values (within double-quote characters)
-                       b' ',                                           // (Space)
-                       b'"', b'W', b'o', b'r', b'l', b'd', b'"',       // Values, continued
-                   ]
-        );
-    }
 
     #[test]
     fn test_convert_empty() {

@@ -15,8 +15,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::protocol::action::Action;
 use std::convert::TryFrom;
+
+use crate::protocol::action::Action;
 
 /// Header
 ///
@@ -74,7 +75,7 @@ impl Header {
     }
 }
 
-impl <const N: usize> TryFrom<&[u8; N]> for Header {
+impl<const N: usize> TryFrom<&[u8; N]> for Header {
     type Error = HeaderError;
 
     /// Converts the array to [`Header`]. The array must be minimum 3 bytes, and
