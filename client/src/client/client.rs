@@ -21,6 +21,8 @@ use std::net::{IpAddr, SocketAddr, TcpStream};
 use std::process::exit;
 use std::time::Duration;
 
+use colored::{ColoredString, Colorize};
+
 use crate::protocol::header::Header;
 use crate::protocol::status::Status;
 use crate::protocol::v1 as protocol_v1;
@@ -32,7 +34,9 @@ impl Client {
         match stream.write(bytes) {
             Ok(_) => {}
             Err(e) => {
-                eprintln!("Failed to send data: {:?}", e.kind());
+                eprintln!("{}",
+                          format!("{} Could not send data to {}. Error: {}", "[ERROR]".bold(), stream.peer_addr().unwrap(), e).as_str().red()
+                );
                 exit(30);
             }
         }
@@ -41,50 +45,110 @@ impl Client {
     fn stream_read(stream: &mut TcpStream) {
         let mut data = [0 as u8; 255];
         match stream.read(&mut data) {
-            Ok(_) => {
-                let header = Header::try_from(&data)
-                    .expect(format!("Could not parse Header from: {:?}", &data).as_str());
-
-                if header.version() == 1 {
-                    // Convert to ResponseBody V1
-                    let body = protocol_v1::response_body::ResponseBody::try_from(&data[3..3 + header.length() as usize])
-                        .expect(format!("Could not parse Response from: {:?}", &data).as_str());
-
-                    if body.status() == Status::Success {
-                        println!("body.lastPacket(): {}", body.last_packet());
-                        println!("body.status(): {:?}", body.status());
-                        println!("body.data(): {:?}", body.data());
-                        println!("body.message(): {:?}", body.message());
+            Ok(size) => {
+                let header;
+                match Header::try_from(&data) {
+                    Ok(h) => {
+                        if h.version() != 1 {
+                            eprintln!("{}",
+                                      format!("{} Unsupported header '{}'. Data: {:?}", "[ERROR]".bold(), h.version(), &data[..size]).as_str().red()
+                            );
+                            exit(40);
+                        }
+                        header = h
                     }
-
-                    if !body.last_packet() {
-                        Self::stream_read(stream);
+                    Err(_) => {
+                        eprintln!("{}",
+                                  format!("{} Could not parse header. Data: {:?}", "[ERROR]".bold(), &data[..size]).as_str().red()
+                        );
+                        exit(41);
                     }
-                } else {
-                    panic!("Invalid version ({}) received for: {:?}", header.version(), &data);
+                }
+
+                // Convert to ResponseBody V1
+                let body_data = &data[3..3 + header.length() as usize];
+                let body;
+                match protocol_v1::response_body::ResponseBody::try_from(body_data) {
+                    Ok(b) => {
+                        if b.status() != Status::Success {
+                            match b.message() {
+                                Ok(m) => {
+                                    let message = if m.is_empty() { "<no message>" } else { m };
+                                    eprintln!("{}",
+                                              String::from(
+                                                  format!("{} ({:?}): {}", "[ERROR]".bold(), b.status(), message).as_str()
+                                              ).red()
+                                    );
+                                    exit(42);
+                                }
+                                Err(_) => {
+                                    eprintln!("{}",
+                                              String::from(
+                                                  format!("{} ({:?}): Error decoding failure message. Data: {:?}", "[ERROR]".bold(), b.status(), &body_data).as_str()
+                                              ).red()
+                                    );
+                                    exit(43);
+                                }
+                            }
+                        }
+                        body = b
+                    }
+                    Err(_) => {
+                        eprintln!("{}",
+                                  format!("{} Could not parse response. Data: {:?}", "[ERROR]".bold(), &data[..size]).as_str().red()
+                        );
+                        exit(44);
+                    }
+                }
+
+                match body.message() {
+                    Ok(m) => {
+                        if !m.is_empty() {
+                            println!("{} {}", "[SUCCESS]".green().bold(), m);
+                        }
+                    }
+                    Err(_) => {
+                        eprintln!("{}",
+                                  format!("{} Could not decode success message. Data: {:?}", "[ERROR]".bold(), &data[..size]).as_str().red()
+                        );
+                        exit(45);
+                    }
+                }
+
+                if !body.last_packet() {
+                    Self::stream_read(stream);
                 }
             }
             Err(e) => {
                 eprintln!("Failed to receive data: {:?}", e.kind());
-                exit(31);
+                exit(46);
             }
         }
     }
 
     pub fn send_bytes(host: IpAddr, port: u16, bytes: Vec<u8>) {
-        println!("PITSCHR: {:?}", bytes);
-        match TcpStream::connect(SocketAddr::new(host, port)) {
+        let remote_addr = SocketAddr::new(host, port);
+        match TcpStream::connect(&remote_addr) {
             Ok(mut stream) => {
-                stream.set_read_timeout(Some(Duration::from_secs(3))).expect("Could not set read timeout.");
-                stream.set_write_timeout(Some(Duration::from_secs(3))).expect("Could not set write timeout.");
+                stream.set_read_timeout(Some(Duration::from_secs(5))).expect("Could not set read timeout.");
+                stream.set_write_timeout(Some(Duration::from_secs(5))).expect("Could not set write timeout.");
 
+                // send packets to KNX Link Server
                 Self::stream_write(&mut stream, bytes.as_slice());
-
+                // read packets from KNX Link Server
                 Self::stream_read(&mut stream);
             }
             Err(e) => {
-                eprintln!("Failed to connect to the server: {}", e);
-                exit(32);
+                let mut err_msg = String::from("[ERROR] ".bold().to_string());
+                if e.kind() == std::io::ErrorKind::ConnectionRefused {
+                    err_msg.push_str(format!("Failed to connect to KNX Link Server. Is KNX Link Server alive at {}?", &remote_addr).as_str());
+                    eprintln!("{}", err_msg.as_str().red());
+                    exit(33);
+                } else {
+                    err_msg.push_str(format!("Failed to connect to KNX Link Server. Error: {}", e).as_str());
+                    eprintln!("{}", err_msg.as_str().red());
+                    exit(32);
+                }
             }
         }
     }

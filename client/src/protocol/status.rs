@@ -15,7 +15,10 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use std::any::Any;
 use std::convert::TryFrom;
+use std::fmt::{Display, Formatter};
+use std::fmt;
 
 /// Status enumeration that should indicate if the body payload
 /// is a `success` or an `error`; if error which type of error.

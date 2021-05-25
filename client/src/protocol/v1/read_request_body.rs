@@ -40,7 +40,7 @@ impl ReadRequestBody {
                 }
             }
             Err(_) => {
-                return Err(ProtocolError::new(format!("Invalid Group Address: {}", group_address)));
+                return Err(ProtocolError::new(format!("Illegal Group Address provided:  Group Address: {}", group_address)));
             }
         }
 

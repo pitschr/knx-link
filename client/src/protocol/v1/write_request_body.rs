@@ -18,10 +18,10 @@
 use std::convert::TryFrom;
 
 use crate::address::group_address::{GroupAddress, GroupAddressBytes};
+use crate::datapoint::datapoint::DataPoint;
 use crate::protocol::action::Action;
 use crate::protocol::header::Header;
 use crate::protocol::v1::protocol::{Protocol, ProtocolError};
-use crate::datapoint::datapoint::DataPoint;
 
 pub struct WriteRequestBody {}
 

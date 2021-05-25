@@ -114,8 +114,9 @@ public final class SocketWorker {
                         // Try to get the KNX status
                         final var value = knxClient.getStatusPool().getStatusFor(groupAddress);
                         if (value == null) {
-                            LOG.warn("Could not get read data for group address: {}", groupAddress);
-                            writeToChannel(channel, action, ResponseBody.of(true, Status.ERROR_TIMEOUT));
+                            var message = String.format("Could not get read data for group address: %s", groupAddress.getAddressLevel3());
+                            LOG.warn(message);
+                            writeToChannel(channel, action, ResponseBody.of(true, Status.ERROR_TIMEOUT, message));
                             return;
                         }
 
@@ -125,8 +126,10 @@ public final class SocketWorker {
                         try {
                             dpv = dpt.of(value.getData());
                         } catch (final Exception e) {
-                            LOG.warn("Could not parse the read data for dpt: {}", dpt);
-                            writeToChannel(channel, action, ResponseBody.of(true, Status.ERROR_INCOMPATIBLE_DATA_POINT_TYPE));
+                            var message = String.format("Could not parse the read data for group address '%s' and data point type '%s': %s",
+                                    groupAddress.getAddressLevel3(), dpt.getId(), ByteFormatter.formatHexAsString(value.getData()));
+                            LOG.warn(message);
+                            writeToChannel(channel, action, ResponseBody.of(true, Status.ERROR_INCOMPATIBLE_DATA_POINT_TYPE, message));
                             return;
                         }
 

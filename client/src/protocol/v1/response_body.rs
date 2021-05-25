@@ -41,7 +41,7 @@ impl ResponseBody {
     }
 
     pub fn message(&self) -> Result<&str, Utf8Error> {
-        from_utf8(self.data.as_slice())
+        from_utf8(&self.data.as_slice())
     }
 }
 
@@ -54,10 +54,10 @@ impl TryFrom<&[u8]> for ResponseBody {
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         Ok(
             ResponseBody {
-                last_packet: value[0] & 0x80 > 0,
-                status: Status::try_from(value[1])
+                last_packet: value[0] & 0x80 != 0,
+                status: Status::try_from(value[0] & 0x0F)
                     .expect(format!("Status not found: {}", value[1]).as_str()),
-                data: value[2..].to_vec(),
+                data: if value.len() > 2 { value[2..].to_vec() } else { vec![] },
             }
         )
     }
