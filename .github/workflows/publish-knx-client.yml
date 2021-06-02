@@ -1,0 +1,50 @@
+name: Publish KNX Client binaries
+
+on:
+  push:
+    branches:
+      - main
+      - main-*
+    tags:
+      - 'v*' # matches v1, v1.1, v1.1.1, etc.
+
+jobs:
+  publish:
+    name: Publish for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          #- os: ubuntu-latest
+          #  artifact_name: knx-client
+          #  asset_name: knx-client-linux-amd64
+          #- os: windows-latest
+          #  artifact_name: knx-client.exe
+          #  asset_name: knx-client-windows-amd64
+          - os: macos-latest
+            artifact_name: knx-client
+            asset_name: knx-client-macos-amd64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build for ${{ matrix.os }}
+        run: cargo build --release --locked
+
+      - name: Upload binary for ${{ matrix.os }}
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: target/release/${{ matrix.artifact_name }}
+          asset_name: ${{ matrix.asset_name }}
+          tag: temp-${{ github.ref }}

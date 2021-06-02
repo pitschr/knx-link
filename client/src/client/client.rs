@@ -143,11 +143,11 @@ impl Client {
                 if e.kind() == std::io::ErrorKind::ConnectionRefused {
                     err_msg.push_str(format!("Failed to connect to KNX Link Server. Is KNX Link Server alive at {}?", &remote_addr).as_str());
                     eprintln!("{}", err_msg.as_str().red());
-                    exit(33);
+                    exit(50);
                 } else {
                     err_msg.push_str(format!("Failed to connect to KNX Link Server. Error: {}", e).as_str());
                     eprintln!("{}", err_msg.as_str().red());
-                    exit(32);
+                    exit(51);
                 }
             }
         }
