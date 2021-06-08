@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!--
+    Set log level to 'ALL' for an useful code coverage, but no output.
+    -->
+    <root level="ALL"/>
+</configuration>

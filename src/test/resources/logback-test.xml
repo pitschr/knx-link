@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Console -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%date [%-5level] [%thread] [%logger:%line] %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!--
+    Log Levels: ALL < TRACE < DEBUG < INFO < WARN < ERROR < OFF
+    -->
+    <root level="${root-level:-ALL}">
+        <appender-ref ref="STDOUT"/>
+    </root>
+</configuration>
