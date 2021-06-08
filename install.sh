@@ -38,9 +38,10 @@ if [[ -z "$(type -p systemctl)" ]]; then
   exit 1
 fi
 
-# Select the latest tag name
-KNX_LINK_LATEST_TAG_NAME=$(curl -s https://api.github.com/repos/pitschr/knx-link/releases/latest | fgrep "tag_name" | cut -d\" -f4)
-if [[ ! $KNX_LINK_LATEST_TAG_NAME =~ "knx-link-\d+\.\d+\.\d+" ]]; then
+# Select the latest tag name and then get the download URL
+KNX_LINK_LATEST_TAG_NAME=$(curl --header 'Accept: application/vnd.github.v3+json' -s https://api.github.com/repos/pitschr/knx-link/tags | fgrep "knx-link-server-" | fgrep "\"name\":" | cut -d\" -f4)
+if [[ ! $KNX_LINK_LATEST_TAG_NAME =~ ^knx-link-server-[0-9\.]+$ ]]; then
+  echo "[ERROR] Latest Tag Name Response: '$KNX_LINK_LATEST_TAG_NAME'"
   echo "[ERROR] Could not fetch the latest tag name from GitHub. Please contact the maintainer."
   exit 2
 fi
@@ -78,7 +79,7 @@ if [[ ! -d "$KNX_LINK_FOLDER" ]]; then
   echo "[ERROR] Could not create folder '$KNX_LINK_FOLDER'. Please check your permission."
   exit 5
 fi 
-DOWNLOAD_URL="https://github.com/pitschr/knx-link/archive/refs/tags/${KNX_LINK_LATEST_TAG_NAME}/${KNX_LINK_LATEST_TAG_NAME}.jar"
+DOWNLOAD_URL="https://github.com/pitschr/knx-link/releases/download/${KNX_LINK_LATEST_TAG_NAME}/${KNX_LINK_LATEST_TAG_NAME}.jar"
 curl -s -o "$KNX_LINK_SERVER_JAR" "$DOWNLOAD_URL"
 if [[ ! -f "$KNX_LINK_SERVER_JAR" ]]; then
   echo "[ERROR] File could not be downloaded from '$DOWNLOAD_URL' to '$KNX_LINK_SERVER_JAR'. Please contact the maintainer."
