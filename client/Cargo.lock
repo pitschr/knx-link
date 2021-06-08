@@ -110,7 +110,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "knx-client"
+name = "knx-link-client"
 version = "0.1.0"
 dependencies = [
  "clap",
