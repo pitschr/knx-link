@@ -217,7 +217,7 @@ systemctl start knx.service
 echo "DONE"
 
 echo -n "Checking systemd 'knx.service' ... "
-sleep 1
+sleep 5
 SYSTEMD_STATUS=$(systemctl status knx.service)
 if [[ $(echo "$SYSTEMD_STATUS" | fgrep "Active: active" | wc -l) -eq 0 ]]; then
   echo "[ERROR] Something went wrong? The status should be 'active', but was not. Please check:"
