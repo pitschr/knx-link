@@ -1,4 +1,4 @@
-[![Build Status](https://github.com/pitschr/knx-link/workflows/build/badge.svg?branch=main)](https://github.com/pitschr/knx-link/actions)
+[![Build Status](https://github.com/pitschr/knx-link/actions/workflows/build-knx-server.yml/badge.svg)](https://github.com/pitschr/knx-link/actions/workflows/build-knx-server.yml)
 [![Coverage Status](https://coveralls.io/repos/github/pitschr/knx-link/badge.svg?branch=main)](https://coveralls.io/github/pitschr/knx-link?branch=main)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
