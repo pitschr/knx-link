@@ -34,7 +34,7 @@ simplified protocol which has been designed for communication between the *KNX L
 
 Execute and follow the instructions:
 ```
-bash <(curl -s https://raw.githubusercontent.com/pitschr/knx-link/main-initial-commit/install.sh)
+bash <(curl -s https://raw.githubusercontent.com/pitschr/knx-link/main/install.sh)
 ```
 
 What it is doing? It is downloading the file [install.sh](./install.sh) I prepared for you and will prompt
@@ -120,7 +120,7 @@ Given examples requests the KNX Group Address `1/2/113` (which has a READ-Flag) 
 data point type `1.001` we may either get `On` or `Off`.
 
 ```
-knx-client read -g 1/2/113 -d 1.001
+knx-link-client read -g 1/2/113 -d 1.001
 ```
 
 ### Write Sub-Command
@@ -137,5 +137,5 @@ The example sets the lamp to `On` for given KNX Group Address `1/2/100`. Based o
 which stands for *Switch* which is a boolean representation the KNX know that `on` is meant to switch on the 
 lamp. Alternatively to `on` you can use the `true` or `1` to switch on the lamp.
 ```
-knx-client write -g 1/2/110 -d 1.001 -v on
+knx-link-client write -g 1/2/110 -d 1.001 -v on
 ```
