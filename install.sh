@@ -80,7 +80,7 @@ if [[ ! -d "$KNX_LINK_FOLDER" ]]; then
   exit 5
 fi 
 DOWNLOAD_URL="https://github.com/pitschr/knx-link/releases/download/${KNX_LINK_LATEST_TAG_NAME}/${KNX_LINK_LATEST_TAG_NAME}.jar"
-curl -s -o "$KNX_LINK_SERVER_JAR" "$DOWNLOAD_URL"
+curl --location -s -o "$KNX_LINK_SERVER_JAR" "$DOWNLOAD_URL"
 if [[ ! -f "$KNX_LINK_SERVER_JAR" ]]; then
   echo "[ERROR] File could not be downloaded from '$DOWNLOAD_URL' to '$KNX_LINK_SERVER_JAR'. Please contact the maintainer."
   exit 5
