@@ -10,6 +10,9 @@ mod datapoint;
 mod client;
 mod protocol;
 
+use colored::Colorize;
+use std::error::Error;
+
 #[derive(Clap)]
 #[clap(name = "KNX Client", about = "A client to send/receive KNX commands to/from KNX-Link Server", version = "0.1")]
 struct Opts {
@@ -90,7 +93,9 @@ fn main() {
                     Client::send_bytes(opts.host, opts.port, bytes)
                 }
                 Err(err) => {
-                    eprintln!("Error during read request. Error: {:?}", err);
+                    eprintln!("{}",
+                        format!("{} Error during read request. {}", "[ERROR]".bold(), err).as_str().red()
+                    );
                     exit(10);
                 }
             }
@@ -105,7 +110,9 @@ fn main() {
                     Client::send_bytes(opts.host, opts.port, bytes)
                 }
                 Err(err) => {
-                    eprintln!("Error during write request. Error: {:?}", err);
+                    eprintln!("{}",
+                              format!("{} Error during write request. {}", "[ERROR]".bold(), err).as_str().red()
+                    );
                     exit(20);
                 }
             }

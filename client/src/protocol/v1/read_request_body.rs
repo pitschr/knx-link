@@ -22,11 +22,12 @@ use crate::datapoint::datapoint::DataPoint;
 use crate::protocol::action::Action;
 use crate::protocol::header::Header;
 use crate::protocol::v1::protocol::ProtocolError;
+use std::error::Error;
 
 pub struct ReadRequestBody {}
 
 impl ReadRequestBody {
-    pub fn as_bytes(group_address: &str, datapoint: &str) -> Result<Vec<u8>, ProtocolError> {
+    pub fn as_bytes(group_address: &str, datapoint: &str) -> Result<Vec<u8>, Box<dyn Error>> {
         //
         // Body
         //
@@ -39,8 +40,8 @@ impl ReadRequestBody {
                     body.push(*i);
                 }
             }
-            Err(_) => {
-                return Err(ProtocolError::new(format!("Illegal Group Address provided:  Group Address: {}", group_address)));
+            Err(e) => {
+                return Err(Box::new(e));
             }
         }
 
@@ -51,8 +52,8 @@ impl ReadRequestBody {
                     body.push(*i);
                 }
             }
-            Err(_) => {
-                return Err(ProtocolError::new(format!("Invalid Data Point Type: {}", datapoint)));
+            Err(e) => {
+                return Err(Box::new(e));
             }
         }
 

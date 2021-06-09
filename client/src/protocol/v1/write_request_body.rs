@@ -22,11 +22,12 @@ use crate::datapoint::datapoint::DataPoint;
 use crate::protocol::action::Action;
 use crate::protocol::header::Header;
 use crate::protocol::v1::protocol::{Protocol, ProtocolError};
+use std::error::Error;
 
 pub struct WriteRequestBody {}
 
 impl WriteRequestBody {
-    pub fn as_bytes(group_address: &str, datapoint: &str, values: Vec<&str>) -> Result<Vec<u8>, ProtocolError> {
+    pub fn as_bytes(group_address: &str, datapoint: &str, values: Vec<&str>) -> Result<Vec<u8>, Box<dyn Error>> {
         //
         // Body
         //
@@ -39,8 +40,8 @@ impl WriteRequestBody {
                     body.push(*i);
                 }
             }
-            Err(_) => {
-                return Err(ProtocolError::new(format!("Invalid Group Address: {}", group_address)));
+            Err(e) => {
+                return Err(Box::new(e));
             }
         }
 
@@ -51,8 +52,8 @@ impl WriteRequestBody {
                     body.push(*i);
                 }
             }
-            Err(_) => {
-                return Err(ProtocolError::new(format!("Invalid Data Point Type: {}", datapoint)));
+            Err(e) => {
+                return Err(Box::new(e));
             }
         }
 

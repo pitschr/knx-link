@@ -23,23 +23,38 @@ use std::str::FromStr;
 use crate::address::group_address_free_level::GroupAddressFreeLevel;
 use crate::address::group_address_three_level::GroupAddressThreeLevel;
 use crate::address::group_address_two_level::GroupAddressTwoLevel;
+use crate::address::group_address::GroupAddressErrorKind::*;
 
 #[derive(Debug, PartialEq)]
 pub struct GroupAddressError {
+    pub(super) kind: GroupAddressErrorKind,
     message: String,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum GroupAddressErrorKind {
+    Empty,
+    Invalid,
+    MainOverflow,
+    MiddleOverflow,
+    SubOverflow,
 }
 
 impl Error for GroupAddressError {}
 
 impl GroupAddressError {
-    pub fn new(message: String) -> Self {
-        GroupAddressError { message }
+    pub fn new(kind: GroupAddressErrorKind, message: &str) -> Self {
+        GroupAddressError { kind, message: String::from(message) }
+    }
+
+    pub fn message(&self) -> &str {
+        &self.message
     }
 }
 
 impl Display for GroupAddressError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.message)
+        write!(f, "Group Address: {}", self.message)
     }
 }
 
@@ -56,40 +71,30 @@ impl TryFrom<&str> for GroupAddress {
     type Error = GroupAddressError;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let splitted: Vec<_> = value.split('/').collect();
-        match splitted.len() {
-            3 => {
-                // Group Address is Three-level
-                match GroupAddressThreeLevel::new(
-                    u8::from_str(splitted[0]).unwrap(),
-                    u8::from_str(splitted[1]).unwrap(),
-                    u8::from_str(splitted[2]).unwrap(),
-                ) {
-                    Ok(ga) => Ok(GroupAddress { address: ga.as_bytes() }),
-                    Err(e) => Err(e),
-                }
-            }
+        match value.matches('/').count() {
             2 => {
-                // Group Address is Two-Level
-                match GroupAddressTwoLevel::new(
-                    u8::from_str(splitted[0]).unwrap(),
-                    u16::from_str(splitted[1]).unwrap(),
-                ) {
+                // Group Address is Three-level
+                match GroupAddressThreeLevel::from_str(value) {
                     Ok(ga) => Ok(GroupAddress { address: ga.as_bytes() }),
                     Err(e) => Err(e),
                 }
             }
             1 => {
+                // Group Address is Two-level
+                match GroupAddressTwoLevel::from_str(value) {
+                    Ok(ga) => Ok(GroupAddress { address: ga.as_bytes() }),
+                    Err(e) => Err(e),
+                }
+            }
+            0 => {
                 // Group Address is Free-Level
-                match GroupAddressFreeLevel::new(
-                    u16::from_str(splitted[0]).unwrap()
-                ) {
+                match GroupAddressFreeLevel::from_str(value) {
                     Ok(ga) => Ok(GroupAddress { address: ga.as_bytes() }),
                     Err(e) => Err(e),
                 }
             }
             _ => {
-                Err(GroupAddressError::new(format!("Unsupported address format provided. Supported are: 0/0/0, 0/0 or 0: {}", value)))
+                Err(GroupAddressError::new(Invalid, "Unsupported group address format provided. Supported are: #/#/#, #/# or #"))
             }
         }
     }
@@ -106,9 +111,10 @@ mod tests {
     use std::convert::TryFrom;
 
     use crate::address::group_address::{GroupAddress, GroupAddressError};
+    use crate::address::group_address::GroupAddressErrorKind::*;
 
     #[test]
-    fn as_bytes_two_level() {
+    fn ok_two_level() {
         // 20/1223 = 1010_0... ...._.... (A4, C7)
         //           ...._.100 ...._....
         //           ...._.... 1100_0111
@@ -117,7 +123,7 @@ mod tests {
     }
 
     #[test]
-    fn as_bytes_three_level() {
+    fn ok_three_level() {
         // 1/2/3   = 0000_1... ...._.... (0A, 03)
         //           ...._.010 ...._....
         //           ...._.... 0000_0011
@@ -126,10 +132,34 @@ mod tests {
     }
 
     #[test]
-    fn as_bytes_error() {
+    fn err_two_level() {
+        assert_eq!(GroupAddress::try_from("0/0").unwrap_err().kind, Invalid);
+
+        assert_eq!(GroupAddress::try_from("32/2").unwrap_err().kind, MainOverflow);
+        assert_eq!(GroupAddress::try_from("99999/2").unwrap_err().kind, MainOverflow);
+
+        assert_eq!(GroupAddress::try_from("0/2048").unwrap_err().kind, SubOverflow);
+        assert_eq!(GroupAddress::try_from("1/99999").unwrap_err().kind, SubOverflow);
+    }
+
+    #[test]
+    fn err_three_level() {
+        assert_eq!(GroupAddress::try_from("0/0/0").unwrap_err().kind, Invalid);
+
+        assert_eq!(GroupAddress::try_from("32/2/3").unwrap_err().kind, MainOverflow);
+        assert_eq!(GroupAddress::try_from("99999/2/3").unwrap_err().kind, MainOverflow);
+
+        assert_eq!(GroupAddress::try_from("1/8/3").unwrap_err().kind, MiddleOverflow);
+        assert_eq!(GroupAddress::try_from("1/99999/3").unwrap_err().kind, MiddleOverflow);
+
+        assert_eq!(GroupAddress::try_from("1/2/256").unwrap_err().kind, SubOverflow);
+        assert_eq!(GroupAddress::try_from("1/2/99999").unwrap_err().kind, SubOverflow);
+    }
+
+    #[test]
+    fn err_invalid_format() {
         // Illegal Format
-        assert_eq!(GroupAddress::try_from("1/2/3/4").err(),
-                   Some(GroupAddressError::new(format!("Unsupported address format provided. Supported are: 0/0/0, 0/0 or 0: 1/2/3/4")))
-        );
+        assert_eq!(GroupAddress::try_from("1/2/3/4").unwrap_err(), 
+                   GroupAddressError::new(Invalid, "Unsupported group address format provided. Supported are: #/#/#, #/# or #"));
     }
 }

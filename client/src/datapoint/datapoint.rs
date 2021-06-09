@@ -20,6 +20,8 @@ use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
 use regex::Regex;
+use std::error::Error;
+use std::fmt;
 
 #[derive(Debug, PartialEq)]
 pub struct DataPointError {
@@ -29,6 +31,14 @@ pub struct DataPointError {
 impl DataPointError {
     pub fn new(message: String) -> Self {
         DataPointError { message }
+    }
+}
+
+impl Error for DataPointError {}
+
+impl Display for DataPointError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Data Point: {}", self.message)
     }
 }
 

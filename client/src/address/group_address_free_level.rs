@@ -20,6 +20,7 @@ use std::fmt;
 use std::str::FromStr;
 
 use crate::address::group_address::{GroupAddressBytes, GroupAddressError};
+use crate::address::group_address::GroupAddressErrorKind::*;
 
 #[derive(Debug)]
 pub struct GroupAddressFreeLevel {
@@ -31,7 +32,7 @@ impl TryFrom<[u8; 2]> for GroupAddressFreeLevel {
 
     fn try_from(value: [u8; 2]) -> Result<Self, Self::Error> {
         if value[0] == 0 && value[1] == 0 {
-            return Err(GroupAddressError::new(format!("Address [0,0] is not allowed because it would lead to address 0")));
+            return Err(GroupAddressError::new(Invalid, "Address [0,0] is not allowed because it would lead to address 0"));
         }
 
         Ok(Self {
@@ -58,7 +59,7 @@ impl FromStr for GroupAddressFreeLevel {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.parse::<u16>() {
             Ok(value) => Self::new(value),
-            Err(_) => Err(GroupAddressError::new(format!("Address must be between [1-65535], but got: {}", s))),
+            Err(_) => Err(GroupAddressError::new(Invalid, "Address must be between 1 and 65535")),
         }
     }
 }
@@ -66,7 +67,7 @@ impl FromStr for GroupAddressFreeLevel {
 impl GroupAddressFreeLevel {
     pub fn new(address: u16) -> Result<Self, GroupAddressError> {
         if address == 0 {
-            return Err(GroupAddressError::new(format!("Address 0 is not allowed!")));
+            return Err(GroupAddressError::new(Invalid, "Address 0 is not allowed"));
         }
 
         Ok(Self { address })
@@ -84,6 +85,7 @@ mod tests {
 
     use crate::address::group_address::{GroupAddressBytes, GroupAddressError};
     use crate::address::group_address_free_level::GroupAddressFreeLevel;
+    use crate::address::group_address::GroupAddressErrorKind::Invalid;
 
     #[test]
     fn new_1() {
@@ -136,15 +138,15 @@ mod tests {
     #[test]
     fn new_err() {
         // Address 0 is not allowed
-        assert_eq!(GroupAddressFreeLevel::new(0).err(),
-                   Some(GroupAddressError::new(format!("Address 0 is not allowed!"))));
+        assert_eq!(GroupAddressFreeLevel::new(0).unwrap_err(),
+                   GroupAddressError::new(Invalid, "Address 0 is not allowed"));
     }
 
     #[test]
     fn from_bytes_err() {
         // Address 0/0 is not allowed
-        assert_eq!(GroupAddressFreeLevel::try_from([0x00, 0x00]).err(),
-                   Some(GroupAddressError::new(format!("Address [0,0] is not allowed because it would lead to address 0"))));
+        assert_eq!(GroupAddressFreeLevel::try_from([0x00, 0x00]).unwrap_err(),
+                   GroupAddressError::new(Invalid, "Address [0,0] is not allowed because it would lead to address 0"));
     }
 
     #[test]
@@ -156,11 +158,10 @@ mod tests {
 
     #[test]
     fn from_string_err() {
-        assert_eq!(GroupAddressFreeLevel::from_str("0").err(),
-                   Some(GroupAddressError::new(format!("Address 0 is not allowed!")))
-        );
-        assert_eq!(GroupAddressFreeLevel::from_str("99999").err(),
-                   Some(GroupAddressError::new(format!("Address must be between [1-65535], but got: 99999")))
-        );
+        assert_eq!(GroupAddressFreeLevel::from_str("0").unwrap_err(),
+                   GroupAddressError::new(Invalid, "Address 0 is not allowed"));
+
+        assert_eq!(GroupAddressFreeLevel::from_str("99999999").unwrap_err(),
+                   GroupAddressError::new(Invalid,"Address must be between 1 and 65535"));
     }
 }
