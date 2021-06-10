@@ -21,7 +21,7 @@ use std::net::{IpAddr, SocketAddr, TcpStream};
 use std::process::exit;
 use std::time::Duration;
 
-use colored::{ColoredString, Colorize};
+use colored::Colorize;
 
 use crate::protocol::header::Header;
 use crate::protocol::status::Status;

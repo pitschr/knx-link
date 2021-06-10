@@ -20,6 +20,7 @@ use std::fmt;
 use std::str::FromStr;
 
 use crate::address::group_address::{GroupAddressBytes, GroupAddressError};
+use crate::address::group_address::GroupAddressErrorKind::*;
 
 #[derive(Debug)]
 pub struct GroupAddressTwoLevel {
@@ -32,7 +33,7 @@ impl TryFrom<[u8; 2]> for GroupAddressTwoLevel {
 
     fn try_from(value: [u8; 2]) -> Result<Self, Self::Error> {
         if value[0] == 0 && value[1] == 0 {
-            return Err(GroupAddressError::new(format!("Address [0,0] is not allowed because it would lead to address 0/0")));
+            return Err(GroupAddressError::new(Invalid, "Address [0,0] is not allowed because it would lead to address 0/0"));
         }
 
         Ok(Self {
@@ -57,19 +58,17 @@ impl FromStr for GroupAddressTwoLevel {
         let split: Vec<&str> = s.split('/').collect();
 
         if split.len() != 2 {
-            return Err(GroupAddressError::new(format!("Unsupported format. Expected '1/1', but got: {}", s)));
+            return Err(GroupAddressError::new(Invalid, "Wrong format. Expected: #/#"));
         }
 
-        let main;
-        let sub;
-        match split[0].parse::<u8>() {
-            Ok(value) => main = value,
-            Err(_) => return Err(GroupAddressError::new(format!("Main must between 0 and 31 but was: {}", split[0]))),
-        }
-        match split[1].parse::<u16>() {
-            Ok(value) => sub = value,
-            Err(_) => return Err(GroupAddressError::new(format!("Sub must between 0 and 2047 but was: {}", split[1]))),
-        }
+        let main = match split[0].parse::<u8>() {
+            Ok(x) => x,
+            Err(_) => return Err(GroupAddressError::new(MainOverflow, "Main must between 0 and 31")),
+        };
+        let sub = match split[1].parse::<u16>() {
+            Ok(x) => x,
+            Err(_) => return Err(GroupAddressError::new(SubOverflow, "Sub must between 0 and 2047")),
+        };
         GroupAddressTwoLevel::new(main, sub)
     }
 }
@@ -87,13 +86,13 @@ impl GroupAddressBytes for GroupAddressTwoLevel {
 impl GroupAddressTwoLevel {
     pub fn new(main: u8, sub: u16) -> Result<Self, GroupAddressError> {
         if main > 31 {
-            return Err(GroupAddressError::new(format!("Main must between 0 and 31 but was: {}", main)));
+            return Err(GroupAddressError::new(MainOverflow, "Main must between 0 and 31"));
         }
         if sub > 2047 {
-            return Err(GroupAddressError::new(format!("Sub must between 0 and 2047 but was: {}", sub)));
+            return Err(GroupAddressError::new(SubOverflow, "Sub must between 0 and 2047"));
         }
         if main == 0 && sub == 0 {
-            return Err(GroupAddressError::new(format!("Address 0/0 is not allowed!")));
+            return Err(GroupAddressError::new(Invalid, "Address 0/0 is not allowed"));
         }
 
         Ok(Self { main, sub })
@@ -114,6 +113,7 @@ mod tests {
     use std::str::FromStr;
 
     use crate::address::group_address::{GroupAddressBytes, GroupAddressError};
+    use crate::address::group_address::GroupAddressErrorKind::*;
     use crate::address::group_address_two_level::GroupAddressTwoLevel;
 
     #[test]
@@ -173,23 +173,23 @@ mod tests {
     #[test]
     fn new_err() {
         // Address 0/0 is not allowed
-        assert_eq!(GroupAddressTwoLevel::new(0, 0).err(),
-                   Some(GroupAddressError::new(format!("Address 0/0 is not allowed!"))));
+        assert_eq!(GroupAddressTwoLevel::new(0, 0).unwrap_err(),
+                   GroupAddressError::new(Invalid, "Address 0/0 is not allowed"));
 
         // main should have only 0-31
-        assert_eq!(GroupAddressTwoLevel::new(32, 0).err(),
-                   Some(GroupAddressError::new(format!("Main must between 0 and 31 but was: 32"))));
+        assert_eq!(GroupAddressTwoLevel::new(32, 0).unwrap_err(),
+                   GroupAddressError::new(MainOverflow, "Main must between 0 and 31"));
 
         // sub should have only 0-2047
-        assert_eq!(GroupAddressTwoLevel::new(0, 2048).err(),
-                   Some(GroupAddressError::new(format!("Sub must between 0 and 2047 but was: 2048"))));
+        assert_eq!(GroupAddressTwoLevel::new(0, 2048).unwrap_err(),
+                   GroupAddressError::new(SubOverflow, "Sub must between 0 and 2047"));
     }
 
     #[test]
     fn from_bytes_err() {
         // Address 0/0 is not allowed
-        assert_eq!(GroupAddressTwoLevel::try_from([0x00, 0x00]).err(),
-                   Some(GroupAddressError::new(format!("Address [0,0] is not allowed because it would lead to address 0/0"))));
+        assert_eq!(GroupAddressTwoLevel::try_from([0x00, 0x00]).unwrap_err(),
+                   GroupAddressError::new(Invalid, "Address [0,0] is not allowed because it would lead to address 0/0"));
     }
 
     #[test]
@@ -202,20 +202,15 @@ mod tests {
 
     #[test]
     fn from_string_err() {
-        assert_eq!(GroupAddressTwoLevel::from_str("0/0").err(),
-                   Some(GroupAddressError::new(format!("Address 0/0 is not allowed!")))
-        );
-        assert_eq!(GroupAddressTwoLevel::from_str("99999/0").err(),
-                   Some(GroupAddressError::new(format!("Main must between 0 and 31 but was: 99999")))
-        );
-        assert_eq!(GroupAddressTwoLevel::from_str("0/99999").err(),
-                   Some(GroupAddressError::new(format!("Sub must between 0 and 2047 but was: 99999")))
-        );
-        assert_eq!(GroupAddressTwoLevel::from_str("32/0").err(),
-                   Some(GroupAddressError::new(format!("Main must between 0 and 31 but was: 32")))
-        );
-        assert_eq!(GroupAddressTwoLevel::from_str("0/2048").err(),
-                   Some(GroupAddressError::new(format!("Sub must between 0 and 2047 but was: 2048")))
-        );
+        assert_eq!(GroupAddressTwoLevel::from_str("0").unwrap_err(), GroupAddressError::new(Invalid, "Wrong format. Expected: #/#"));
+        assert_eq!(GroupAddressTwoLevel::from_str("0/0/0").unwrap_err(), GroupAddressError::new(Invalid, "Wrong format. Expected: #/#"));
+
+        assert_eq!(GroupAddressTwoLevel::from_str("0/0").unwrap_err(), GroupAddressError::new(Invalid, "Address 0/0 is not allowed"));
+
+        assert_eq!(GroupAddressTwoLevel::from_str("32/0").unwrap_err(), GroupAddressError::new(MainOverflow, "Main must between 0 and 31"));
+        assert_eq!(GroupAddressTwoLevel::from_str("99999/0").unwrap_err(), GroupAddressError::new(MainOverflow, "Main must between 0 and 31"));
+
+        assert_eq!(GroupAddressTwoLevel::from_str("0/2048").unwrap_err(), GroupAddressError::new(SubOverflow, "Sub must between 0 and 2047"));
+        assert_eq!(GroupAddressTwoLevel::from_str("0/99999").unwrap_err(), GroupAddressError::new(SubOverflow, "Sub must between 0 and 2047"));
     }
 }

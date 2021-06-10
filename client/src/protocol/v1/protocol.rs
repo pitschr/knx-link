@@ -15,29 +15,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::error::Error;
-use std::fmt;
-use std::fmt::{Display, Formatter};
-
-#[derive(Debug)]
-pub struct ProtocolError {
-    message: String,
-}
-
-impl Error for ProtocolError {}
-
-impl Display for ProtocolError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.message)
-    }
-}
-
-impl ProtocolError {
-    pub fn new(message: String) -> Self {
-        ProtocolError { message }
-    }
-}
-
 pub struct Protocol;
 
 impl Protocol {

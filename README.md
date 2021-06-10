@@ -93,7 +93,7 @@ have KNX Link Server installed and running.*
 The KNX Link Client is implemented in [Rust](https://www.rust-lang.org/) to allow a very quick cold-start 
 and communication with the KNX Link Server. The biggest advantage is that no runtime (e.g. Java JDK) is 
 required which allows to run the application as a native. The pre-build executables can be found on the
-[release page](https://github.com/pitschr/knx-link/releases). 
+[release page](https://github.com/pitschr/knx-link/releases). Just download it and make sure that the file is executable.
 
 Reminder: If you are requesting the KNX Link Server from another machine, please make sure that the IP address of the
 machine list is white-listed on the KNX Link Server, otherwise your packets won't be accepted by the KNX Link Server
