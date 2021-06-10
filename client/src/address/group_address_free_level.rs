@@ -59,7 +59,7 @@ impl FromStr for GroupAddressFreeLevel {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.parse::<u16>() {
             Ok(value) => Self::new(value),
-            Err(_) => Err(GroupAddressError::new(Invalid, "Address must be between 1 and 65535")),
+            Err(_) => Err(GroupAddressError::new(Overflow, "Address must be between 1 and 65535")),
         }
     }
 }
@@ -85,7 +85,7 @@ mod tests {
 
     use crate::address::group_address::{GroupAddressBytes, GroupAddressError};
     use crate::address::group_address_free_level::GroupAddressFreeLevel;
-    use crate::address::group_address::GroupAddressErrorKind::Invalid;
+    use crate::address::group_address::GroupAddressErrorKind::*;
 
     #[test]
     fn new_1() {
@@ -162,6 +162,6 @@ mod tests {
                    GroupAddressError::new(Invalid, "Address 0 is not allowed"));
 
         assert_eq!(GroupAddressFreeLevel::from_str("99999999").unwrap_err(),
-                   GroupAddressError::new(Invalid,"Address must be between 1 and 65535"));
+                   GroupAddressError::new(Overflow,"Address must be between 1 and 65535"));
     }
 }

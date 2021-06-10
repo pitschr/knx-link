@@ -11,7 +11,6 @@ mod client;
 mod protocol;
 
 use colored::Colorize;
-use std::error::Error;
 
 #[derive(Clap)]
 #[clap(name = "KNX Client", about = "A client to send/receive KNX commands to/from KNX-Link Server", version = "0.1")]

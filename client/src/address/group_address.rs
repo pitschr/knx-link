@@ -35,6 +35,7 @@ pub struct GroupAddressError {
 pub enum GroupAddressErrorKind {
     Empty,
     Invalid,
+    Overflow,
     MainOverflow,
     MiddleOverflow,
     SubOverflow,
@@ -45,10 +46,6 @@ impl Error for GroupAddressError {}
 impl GroupAddressError {
     pub fn new(kind: GroupAddressErrorKind, message: &str) -> Self {
         GroupAddressError { kind, message: String::from(message) }
-    }
-
-    pub fn message(&self) -> &str {
-        &self.message
     }
 }
 
@@ -71,6 +68,10 @@ impl TryFrom<&str> for GroupAddress {
     type Error = GroupAddressError;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
+        if value.trim().is_empty() {
+            return Err(GroupAddressError::new(Empty, "No group address provided"))
+        }
+
         match value.matches('/').count() {
             2 => {
                 // Group Address is Three-level
@@ -114,6 +115,15 @@ mod tests {
     use crate::address::group_address::GroupAddressErrorKind::*;
 
     #[test]
+    fn ok_free_level() {
+        // 4711 = 0001_0010 ...._.... (12, 67)
+        //        ...._.... 0110 0111
+        let group_address = GroupAddress::try_from("4711").unwrap();
+        assert_eq!(group_address.address, [0x12, 0x67]);
+    }
+
+
+    #[test]
     fn ok_two_level() {
         // 20/1223 = 1010_0... ...._.... (A4, C7)
         //           ...._.100 ...._....
@@ -129,6 +139,12 @@ mod tests {
         //           ...._.... 0000_0011
         let group_address = GroupAddress::try_from("1/2/3").unwrap();
         assert_eq!(group_address.address, [0x0A, 0x03]);
+    }
+
+    #[test]
+    fn err_free_level() {
+        assert_eq!(GroupAddress::try_from("0").unwrap_err().kind, Invalid);
+        assert_eq!(GroupAddress::try_from("99999").unwrap_err().kind, Overflow);
     }
 
     #[test]
@@ -154,6 +170,15 @@ mod tests {
 
         assert_eq!(GroupAddress::try_from("1/2/256").unwrap_err().kind, SubOverflow);
         assert_eq!(GroupAddress::try_from("1/2/99999").unwrap_err().kind, SubOverflow);
+    }
+
+    #[test]
+    fn err_empty() {
+        assert_eq!(GroupAddress::try_from("").unwrap_err(),
+                   GroupAddressError::new(Empty, "No group address provided"));
+
+        assert_eq!(GroupAddress::try_from("  ").unwrap_err(),
+                   GroupAddressError::new(Empty, "No group address provided"));
     }
 
     #[test]
