@@ -6,6 +6,37 @@ on:
       - 'knx-link-client-*' # matches 1, 1.1, 1.1.1, etc.
 
 jobs:
+
+  publish_musl:
+    name: Publish KNX Link Client for Linux/Musl
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: linux-musl-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build KNX Link Client for Linux/Musl
+        run: |
+          cd client
+          rustup target add x86_64-unknown-linux-musl
+          cargo build --release --locked --target x86_64-unknown-linux-musl
+
+      - name: Upload KNX Link Client binary for Linux/Musl
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: client/target/x86_64-unknown-linux-musl/release/knx-link-client
+          asset_name: knx-link-client-linux-musl
+          tag: ${{ github.ref }}
+
   publish:
     name: Publish KNX Link Client for ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
