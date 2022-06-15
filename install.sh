@@ -15,13 +15,15 @@ echo "********************************************************************"
 
 # Check if 'java' is available
 if [[ -z "$(type -p java)" ]]; then
-	echo "[ERROR] Java not installed? Please install Java 11 or above."
-	exit 1
+  echo "[ERROR] Java not installed? Please install Java 11 or above."
+  exit 1
 else
   # Check if 'java' is version 11 or above
-  javaVersion=$(javap -verbose java.lang.Void | fgrep "major version" | cut -d':' -f2 | xargs)
-  if [[ $javaVersion -lt 55 ]]; then
-    echo "[ERROR] You have Java major version '$javaVersion', required is Java 11 (major version 55 and above)."
+  # 1.8 will be interpreted as 18
+  # 11.0 will be interpreted as 110
+  javaVersion=$(java -version 2>&1 | sed 's/.*"\([^\.]*\)\.\([^\.]*\).*".*/\1\2/; 1q')
+  if [[ $javaVersion -lt 110 ]]; then
+    echo "[ERROR] Old Java version? Please install Java 11 or above."
     exit 1
   fi
 fi
