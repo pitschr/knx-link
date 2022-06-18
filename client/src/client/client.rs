@@ -134,7 +134,7 @@ impl Client {
                 stream.set_write_timeout(Some(Duration::from_secs(5))).expect("Could not set write timeout.");
 
                 // send packets to KNX Link Server
-                Self::stream_write(&mut stream, bytes.as_slice());
+                Self::stream_write(&mut stream, &bytes);
                 // read packets from KNX Link Server
                 Self::stream_read(&mut stream);
             }

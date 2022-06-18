@@ -201,4 +201,24 @@ class SocketWorkerTest {
                 );
     }
 
+    @Test
+    @DisplayName("#execute(ChannelPacket) - WRITE REQUEST - Incompatible value for DataPointType")
+    void test_execute_WriteRequest_IncompatibleDataPointType() throws IOException {
+        final var channelPacketMock = createChannelPacketMock(
+                Helper.createProtocolV1Packet(Action.WRITE_REQUEST, "1/2/3", "1.001", new String[]{"foobar"})
+        );
+
+        final var worker = new SocketWorker(createKnxClientMock());
+        worker.execute(channelPacketMock);
+
+        final var argCaptor = ArgumentCaptor.forClass(ByteBuffer.class);
+        verify(channelPacketMock.getChannel(), timeout(5000)).write(argCaptor.capture());
+
+        assertThat(argCaptor.getAllValues().stream().map(ByteBuffer::array)
+                .map(a -> ResponseBody.of(Arrays.copyOfRange(a, 3, a.length)))) // first three bytes are "header"
+                .containsExactly(
+                        ResponseBody.of(true, Status.ERROR_INCOMPATIBLE_DATA_POINT_TYPE,
+                                "I could not understand value for group address '1/2/3' and data point type '1.001': [foobar]")
+                );
+    }
 }

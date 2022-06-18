@@ -19,6 +19,7 @@ package li.pitschmann.knx.link;
 
 import li.pitschmann.knx.core.communication.KnxClient;
 import li.pitschmann.knx.core.datapoint.value.DataPointValue;
+import li.pitschmann.knx.core.exceptions.KnxException;
 import li.pitschmann.knx.core.utils.ByteFormatter;
 import li.pitschmann.knx.core.utils.Preconditions;
 import li.pitschmann.knx.link.protocol.Header;
@@ -151,15 +152,26 @@ public final class SocketWorker {
      * @param packet the channel packet
      */
     private void actionWrite(final ChannelPacket packet) {
+        final var action = Action.WRITE_RESPONSE;
+
         final var bytes = Arrays.copyOfRange(packet.getBytes(), 3, packet.getBytes().length);
         final var writeRequest = WriteRequestBody.of(bytes);
+        LOG.debug("Write request: {}", writeRequest);
         final var dpt = writeRequest.getDataPointType();
-        final var dpv = dpt.of(writeRequest.getArguments());
         final var groupAddress = writeRequest.getGroupAddress();
         final var channel = packet.getChannel();
-        LOG.debug("Write request: {}", writeRequest);
 
-        final var action = Action.WRITE_RESPONSE;
+        final DataPointValue dpv;
+        try {
+            dpv = dpt.of(writeRequest.getArguments());
+        } catch (final KnxException ex) {
+            var message = String.format("I could not understand value for group address '%s' and data point type '%s': %s",
+                    groupAddress.getAddressLevel3(), dpt.getId(), Arrays.toString(writeRequest.getArguments()));
+            LOG.warn(message);
+            writeToChannel(channel, action, ResponseBody.of(true, Status.ERROR_INCOMPATIBLE_DATA_POINT_TYPE, message));
+            return;
+        }
+
         knxClient.writeRequest(groupAddress, dpv)
                 .thenAccept(b -> {
                     if (b) {
