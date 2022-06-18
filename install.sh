@@ -41,7 +41,7 @@ if [[ -z "$(type -p systemctl)" ]]; then
 fi
 
 # Select the latest tag name and then get the download URL
-KNX_LINK_LATEST_TAG_NAME=$(curl --header 'Accept: application/vnd.github.v3+json' -s https://api.github.com/repos/pitschr/knx-link/tags | fgrep "knx-link-server-" | fgrep "\"name\":" | cut -d\" -f4)
+KNX_LINK_LATEST_TAG_NAME=$(curl --header 'Accept: application/vnd.github.v3+json' -s https://api.github.com/repos/pitschr/knx-link/tags | fgrep "knx-link-server-" | fgrep "\"name\":" | cut -d\" -f4 | sort -nr | head -n1)
 if [[ ! $KNX_LINK_LATEST_TAG_NAME =~ ^knx-link-server-[0-9\.]+$ ]]; then
   echo "[ERROR] Latest Tag Name Response: '$KNX_LINK_LATEST_TAG_NAME'"
   echo "[ERROR] Could not fetch the latest tag name from GitHub. Please contact the maintainer."
