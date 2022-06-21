@@ -42,7 +42,11 @@ public enum Action {
     /**
      * WRITE Response. Here we will send a WRITE Response to the KNX Link Client
      */
-    WRITE_RESPONSE(0x03);
+    WRITE_RESPONSE(0x03),
+    /**
+     * General Message that should be sent to the KNX Link Client
+     */
+    GENERAL_MESSAGE(0xFF);
 
     private final int code;
 

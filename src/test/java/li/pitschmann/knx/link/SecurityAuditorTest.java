@@ -17,15 +17,19 @@
 
 package li.pitschmann.knx.link;
 
+import li.pitschmann.knx.link.protocol.ResponseBody;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
+import java.util.List;
 import java.util.Set;
 
+import static li.pitschmann.knx.link.test.Helper.createChannelPacketMock;
+import static li.pitschmann.knx.link.test.Helper.verifyChannelPackets;
+import static li.pitschmann.knx.link.test.Helper.verifyNoChannelPackets;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -38,33 +42,48 @@ class SecurityAuditorTest {
     @Test
     @DisplayName("#isRemoteAddressValid(SocketChannel): 127.0.0.1, in whitelist")
     void test_remoteAddress_127_0_0_1() throws IOException {
-        final var auditor = new SecurityAuditor(Set.of("127.0.0.1"));
+        final var auditor = new SecurityAuditor(Set.of());
 
-        final var socketChannelMock = mock(SocketChannel.class);
-        final var socketAddressMock = mock(InetSocketAddress.class);
-        final var inetAddressMock = mock(InetAddress.class);
+        // 127.0.0.1 should be always whitelisted
+        final var socketChannelPacketMock = createChannelPacketMock();
+        when(((InetSocketAddress) socketChannelPacketMock.getChannel().getRemoteAddress()).getAddress().getHostAddress())
+                .thenReturn("127.0.0.1"); // simulate the request coming from client with ip address 10.0.0.1
 
-        when(socketChannelMock.getRemoteAddress()).thenReturn(socketAddressMock);
-        when(socketAddressMock.getAddress()).thenReturn(inetAddressMock);
-        when(inetAddressMock.getHostAddress()).thenReturn("127.0.0.1");
+        assertThat(auditor.isRemoteAddressValid(socketChannelPacketMock.getChannel())).isTrue();
+        verifyNoChannelPackets(socketChannelPacketMock);
+    }
 
-        assertThat(auditor.isRemoteAddressValid(socketChannelMock)).isTrue();
+    @Test
+    @DisplayName("#isRemoteAddressValid(SocketChannel): 198.168.0.1, in whitelist")
+    void test_remoteAddress_198_168_0_1() throws IOException {
+        final var auditor = new SecurityAuditor(Set.of("198.168.0.1"));
+
+        // 127.0.0.1 should be always whitelisted
+        final var socketChannelPacketMock = createChannelPacketMock();
+        when(((InetSocketAddress) socketChannelPacketMock.getChannel().getRemoteAddress()).getAddress().getHostAddress())
+                .thenReturn("198.168.0.1");
+
+        assertThat(auditor.isRemoteAddressValid(socketChannelPacketMock.getChannel())).isTrue();
+        verifyNoChannelPackets(socketChannelPacketMock);
     }
 
     @Test
     @DisplayName("#isRemoteAddressValid(SocketChannel): 10.0.0.1, not in whitelist")
     void test_remoteAddress_10_0_0_1() throws IOException {
-        final var auditor = new SecurityAuditor(Set.of("127.0.0.1"));
+        final var auditor = new SecurityAuditor(Set.of("192.168.0.111"));
 
-        final var socketChannelMock = mock(SocketChannel.class);
-        final var socketAddressMock = mock(InetSocketAddress.class);
-        final var inetAddressMock = mock(InetAddress.class);
+        final var socketChannelPacketMock = createChannelPacketMock();
+        when(((InetSocketAddress) socketChannelPacketMock.getChannel().getRemoteAddress()).getAddress().getHostAddress())
+                .thenReturn("10.0.0.1"); // simulate the request coming from client with ip address 10.0.0.1
 
-        when(socketChannelMock.getRemoteAddress()).thenReturn(socketAddressMock);
-        when(socketAddressMock.getAddress()).thenReturn(inetAddressMock);
-        when(inetAddressMock.getHostAddress()).thenReturn("10.0.0.1");
+        assertThat(auditor.isRemoteAddressValid(socketChannelPacketMock.getChannel())).isFalse();
 
-        assertThat(auditor.isRemoteAddressValid(socketChannelMock)).isFalse();
+        final var expectedResponseBodies = List.of(
+                ResponseBody.of(true, Status.ERROR_CLIENT_NOT_AUTHORIZED,
+                        "Your IP Address '10.0.0.1' is not whitelisted. To add your IP Address to whitelist, add " +
+                                "it to the property 'server.allowed.addresses' of your 'server.cfg' file.")
+        );
+        verifyChannelPackets(socketChannelPacketMock, expectedResponseBodies);
     }
 
     @Test

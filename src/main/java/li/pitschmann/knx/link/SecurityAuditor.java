@@ -18,6 +18,7 @@
 package li.pitschmann.knx.link;
 
 import li.pitschmann.knx.core.utils.Strings;
+import li.pitschmann.knx.link.protocol.ResponseBody;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,11 +69,26 @@ public final class SecurityAuditor {
                 final var inetSocketAddress = (InetSocketAddress) socketAddress;
                 final var ipAddress = inetSocketAddress.getAddress().getHostAddress();
 
-                if (allowedAddresses.contains(ipAddress)) {
+                if ("127.0.0.1".equals(ipAddress)) {
+                    LOG.debug("Socket channel IP address is loopback. Accepted.");
+                    return true;
+                }
+                else if (allowedAddresses.contains(ipAddress)) {
                     LOG.debug("Socket channel IP address found in whitelist: {}", ipAddress);
                     return true;
                 }
-                LOG.warn("Socket channel IP address not found in whitelist: {}", ipAddress);
+                else {
+                    SocketWriter.writeToChannel(socketChannel,
+                            ResponseBody.of(
+                                    true,
+                                    Status.ERROR_CLIENT_NOT_AUTHORIZED,
+                                    String.format("Your IP Address '%s' is not whitelisted. To add your IP Address to " +
+                                            "whitelist, add it to the property 'server.allowed.addresses' of your " +
+                                            "'server.cfg' file.", ipAddress)
+                            )
+                    );
+                    LOG.warn("Socket channel IP address not found in whitelist: {}", ipAddress);
+                }
             }
         } catch (final IOException e) {
             LOG.error("Could not validate the IP address of socket channel: {}", socketChannel, e);
