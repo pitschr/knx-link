@@ -29,11 +29,10 @@ import li.pitschmann.knx.link.protocol.WriteRequestBody;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 import java.util.Objects;
+
+import static li.pitschmann.knx.link.SocketWriter.writeToChannel;
 
 /**
  * Worker for Server
@@ -44,28 +43,6 @@ public final class SocketWorker {
 
     SocketWorker(final KnxClient knxClient) {
         this.knxClient = Objects.requireNonNull(knxClient);
-    }
-
-    private static void writeToChannel(final SocketChannel channel, final Action action, final ResponseBody responseBody) {
-        final var responseBytes = responseBody.getBytes();
-
-        // Currently we only have Protocol V1 - so no special strategy implementation required
-        final var headerBytes = Header.of(1, action, responseBytes.length).getBytes();
-        final var bytes = new byte[headerBytes.length + responseBytes.length];
-        System.arraycopy(headerBytes, 0, bytes, 0, headerBytes.length);
-        System.arraycopy(responseBytes, 0, bytes, headerBytes.length, responseBytes.length);
-
-        if (channel.isConnected()) {
-            try {
-                channel.write(ByteBuffer.wrap(bytes));
-            } catch (final IOException e) {
-                LOG.error("I/O Exception during replying to channel: {}", channel, e);
-            }
-        } else {
-            LOG.warn("The channel ({}) seems not be open anymore and could not respond: {}",
-                    channel,
-                    bytes);
-        }
     }
 
     /**
