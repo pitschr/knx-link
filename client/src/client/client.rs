@@ -30,7 +30,7 @@ use crate::protocol::v1 as protocol_v1;
 pub struct Client;
 
 impl Client {
-    fn stream_write(stream: &mut impl Write, bytes: &[u8]) {
+    fn stream_write(stream: &mut TcpStream, bytes: &[u8]) {
         match stream.write(bytes) {
             Ok(_) => {}
             Err(e) => {
@@ -42,7 +42,7 @@ impl Client {
         }
     }
 
-    fn stream_read(stream: &mut impl Read) {
+    fn stream_read(stream: &mut TcpStream) {
         let mut data = [0 as u8; 255];
         match stream.read(&mut data) {
             Ok(size) => {
