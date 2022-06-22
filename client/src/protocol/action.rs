@@ -24,6 +24,7 @@ pub enum Action {
     WriteRequest,
     ReadResponse,
     WriteResponse,
+    GeneralMessage,
 }
 
 /// Error in case no suitable [`Action`] could be found
@@ -41,6 +42,7 @@ impl TryFrom<u8> for Action {
             1 => Ok(Action::WriteRequest),
             2 => Ok(Action::ReadResponse),
             3 => Ok(Action::WriteResponse),
+            255 => Ok(Action::GeneralMessage),
             _ => Err(UnknownActionError {})
         }
     }
@@ -53,6 +55,7 @@ impl From<Action> for u8 {
             Action::WriteRequest => 1,
             Action::ReadResponse => 2,
             Action::WriteResponse => 3,
+            Action::GeneralMessage => 255,
         }
     }
 }
@@ -67,6 +70,7 @@ mod tests {
         assert_eq!(u8::from(Action::WriteRequest), 1);
         assert_eq!(u8::from(Action::ReadResponse), 2);
         assert_eq!(u8::from(Action::WriteResponse), 3);
+        assert_eq!(u8::from(Action::GeneralMessage), 255);
     }
 
     #[test]
@@ -75,10 +79,11 @@ mod tests {
         assert_eq!(Action::WriteRequest, Action::try_from(u8::from(Action::WriteRequest)).unwrap());
         assert_eq!(Action::ReadResponse, Action::try_from(u8::from(Action::ReadResponse)).unwrap());
         assert_eq!(Action::WriteResponse, Action::try_from(u8::from(Action::WriteResponse)).unwrap());
+        assert_eq!(Action::GeneralMessage, Action::try_from(u8::from(Action::GeneralMessage)).unwrap());
     }
 
     #[test]
     fn test_try_from_err() {
-        assert!(Action::try_from(255).is_err())
+        assert!(Action::try_from(128).is_err())
     }
 }
