@@ -115,7 +115,7 @@ The **read** sub-command to send a **read request** packet to KNX Link Server
 | Parameter                     | Description |
 | ----------------------------- | ----------- |
 | `-g`<br>`--group_address`     | The KNX group address that should receive the read request.<br><br>Supported formats are<br>**Three-Level:** Main, Middle and Sub (Range: `0/0/1 - 31/7/255`),<br>**Two-Level:** Main and Sub (Range: `0/1 - 31/2047`) and<br>**Free-Level:** Address (Range: `1 - 65535`) |
-| `-d`<br>`--data_point_type`   | The KNX data point type that you are requesting for.<br><br>Supported formats are `#`, `#.#`, `dpt-#` and `dpst-#-#`.<br>**Examples for 'Switch' Data Point Type:**<br>`1`, `1.1`, `1.001`, `dpt-1`, `dpst-1-1`<br>**Examples for 'Date' Data Point Type:**<br>`11`, `11.1`, `11.001`, `dpt-11`, `dpst-11-1` |
+| `-d`<br>`--data_point_type`   | The KNX data point type that you are requesting for.<br><br>Supported formats are `#`, `#.#`, `dpt-#` and `dpst-#-#`.<br>**Examples for 'Switch' Data Point Type:** `1`, `1.1`, `1.001`, `dpt-1`, `dpst-1-1`<br>**Examples for 'Date' Data Point Type:** `11`, `11.1`, `11.001`, `dpt-11`, `dpst-11-1` |
 
 Given examples requests the KNX Group Address `1/2/113` (which has a READ-Flag) the status of e.g. lamp. With given
 data point type `1.001` we may either get `On` or `Off`.
