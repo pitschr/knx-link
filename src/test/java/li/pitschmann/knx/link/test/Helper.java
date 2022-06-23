@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Pitschmann Christoph
+ * Copyright (C) 2022 Pitschmann Christoph
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,16 +27,30 @@ import li.pitschmann.knx.link.Action;
 import li.pitschmann.knx.link.ChannelPacket;
 import li.pitschmann.knx.link.SecurityAuditor;
 import li.pitschmann.knx.link.config.Config;
+import li.pitschmann.knx.link.protocol.ResponseBody;
+import org.mockito.ArgumentCaptor;
 
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * Helper Class for Test Scenarios
+ */
 public final class Helper {
 
     /**
@@ -77,6 +91,12 @@ public final class Helper {
         return knxClientMock;
     }
 
+    /**
+     * Creates a mocked {@link KnxStatusData} to simulate a response from a KNX Net/IP device
+     * @param knxClientMock the mocked {@link KnxClient}; may not be null
+     * @param dpv the {@link DataPointValue} that should be returned for testing purpose; may not be null
+     * @return mocked {@link KnxStatusData}
+     */
     public static KnxStatusData createKnxStatusDataMock(final KnxClient knxClientMock, final DataPointValue dpv) {
         final var knxStatusDataMock = mock(KnxStatusData.class);
         when(knxStatusDataMock.getData()).thenReturn(dpv.toByteArray());
@@ -92,13 +112,71 @@ public final class Helper {
      * @return mocked {@link ChannelPacket}
      */
     public static ChannelPacket createChannelPacketMock(final byte[] bytes) {
+        final var inetAddressMock = mock(InetAddress.class);
+        when(inetAddressMock.getHostAddress()).thenReturn("127.0.0.1");
+
+        final var socketAddressMock = mock(InetSocketAddress.class);
+        when(socketAddressMock.getAddress()).thenReturn(inetAddressMock);
+
         final var channelMock = mock(SocketChannel.class);
         when(channelMock.isConnected()).thenReturn(true);
+        try {
+            when(channelMock.getRemoteAddress()).thenReturn(socketAddressMock);
+        } catch (IOException e) {
+            throw new AssertionError("Should never happen with mock!");
+        }
 
         final var channelPacketMock = mock(ChannelPacket.class);
         when(channelPacketMock.getChannel()).thenReturn(channelMock);
         when(channelPacketMock.getBytes()).thenReturn(bytes);
+
         return channelPacketMock;
+    }
+
+    /**
+     * Creates a mock {@link ChannelPacket} with default values
+     *
+     * @return mocked {@link ChannelPacket}
+     */
+    public static ChannelPacket createChannelPacketMock() {
+        return createChannelPacketMock(new byte[0]);
+    }
+
+    /**
+     * Verifies that given list of {@link ResponseBody} was returned by the KNX Link Server
+     *
+     * @param channelPacketMock the channel packet to be inspected; may not be null
+     * @param expectedResponses list of {@link ResponseBody} to be expected; may not be null
+     */
+    public static void verifyChannelPackets(final ChannelPacket channelPacketMock, final List<ResponseBody> expectedResponses) {
+        final var argCaptor = ArgumentCaptor.forClass(ByteBuffer.class);
+        try {
+            verify(channelPacketMock.getChannel(), timeout(5000).times(expectedResponses.size()))
+                    .write(argCaptor.capture());
+        } catch (IOException e) {
+            throw new AssertionError("Should not happen!");
+        }
+
+        // first 3 bytes will be skipped:
+        // Byte 0: Protocol Version
+        // Byte 1: Type of response
+        // Byte 2: Length of response byte array
+        assertThat(argCaptor.getAllValues().stream().map(ByteBuffer::array)
+                .map(a -> ResponseBody.of(Arrays.copyOfRange(a, 3, a.length)))
+        ).containsExactlyElementsOf(expectedResponses);
+    }
+
+    /**
+     * Verifies that no channel packets have been sent to the {@link ChannelPacket}
+     *
+     * @param channelPacketMock the channel packet to be inspected; may not be null
+     */
+    public static void verifyNoChannelPackets(final ChannelPacket channelPacketMock) {
+        try {
+            verify(channelPacketMock.getChannel(), never()).write(any(ByteBuffer.class));
+        } catch (IOException e) {
+            throw new AssertionError("Should not happen!");
+        }
     }
 
     /**

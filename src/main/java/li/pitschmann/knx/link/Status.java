@@ -50,7 +50,11 @@ public enum Status {
      * (e.g. byte array cannot be translated into String for given Data Point Type)
      * (e.g. string cannot be translated into byte array for given Data Point Type)
      */
-    ERROR_INCOMPATIBLE_DATA_POINT_TYPE(0x05);
+    ERROR_INCOMPATIBLE_DATA_POINT_TYPE(0x05),
+    /**
+     * Error: The client is not authorized
+     */
+    ERROR_CLIENT_NOT_AUTHORIZED(0x06);
 
     private final int code;
 

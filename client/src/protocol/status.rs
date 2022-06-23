@@ -27,6 +27,7 @@ pub enum Status {
     ErrorTimeout,
     ErrorGroupAddress,
     ErrorDataPointType,
+    ErrorClientNotAuthorized,
 }
 
 /// Error in case no suitable [`Status`] could be found
@@ -46,6 +47,7 @@ impl TryFrom<u8> for Status {
             3 => Ok(Status::ErrorTimeout),
             4 => Ok(Status::ErrorGroupAddress),
             5 => Ok(Status::ErrorDataPointType),
+            6 => Ok(Status::ErrorClientNotAuthorized),
             _ => Err(UnknownStatusError)
         }
     }
@@ -60,6 +62,7 @@ impl From<Status> for u8 {
             Status::ErrorTimeout => 3,
             Status::ErrorGroupAddress => 4,
             Status::ErrorDataPointType => 5,
+            Status::ErrorClientNotAuthorized => 6,
         }
     }
 }
@@ -76,6 +79,7 @@ mod tests {
         assert_eq!(u8::from(Status::ErrorTimeout), 3);
         assert_eq!(u8::from(Status::ErrorGroupAddress), 4);
         assert_eq!(u8::from(Status::ErrorDataPointType), 5);
+        assert_eq!(u8::from(Status::ErrorClientNotAuthorized), 6);
     }
 
     #[test]
@@ -86,6 +90,7 @@ mod tests {
         assert_eq!(Status::ErrorTimeout, Status::try_from(u8::from(Status::ErrorTimeout)).unwrap());
         assert_eq!(Status::ErrorGroupAddress, Status::try_from(u8::from(Status::ErrorGroupAddress)).unwrap());
         assert_eq!(Status::ErrorDataPointType, Status::try_from(u8::from(Status::ErrorDataPointType)).unwrap());
+        assert_eq!(Status::ErrorClientNotAuthorized, Status::try_from(u8::from(Status::ErrorClientNotAuthorized)).unwrap());
     }
 
     #[test]

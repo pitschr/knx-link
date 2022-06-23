@@ -24,24 +24,21 @@ import li.pitschmann.knx.link.protocol.ResponseBody;
 import li.pitschmann.knx.link.test.Helper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import static li.pitschmann.knx.link.test.Helper.createChannelPacketMock;
 import static li.pitschmann.knx.link.test.Helper.createKnxClientMock;
 import static li.pitschmann.knx.link.test.Helper.createKnxStatusDataMock;
-import static org.assertj.core.api.Assertions.assertThat;
+import static li.pitschmann.knx.link.test.Helper.verifyChannelPackets;
+import static li.pitschmann.knx.link.test.Helper.verifyNoChannelPackets;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.timeout;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -107,7 +104,7 @@ class SocketWorkerTest {
         final var worker = new SocketWorker(createKnxClientMock());
 
         final var channelPacketMock = mock(ChannelPacket.class);
-        when(channelPacketMock.getBytes()).thenReturn(new byte[]{0x01, (byte) 0xFF, 0x00});
+        when(channelPacketMock.getBytes()).thenReturn(new byte[]{0x01, (byte) 0xEE, 0x00});
 
         assertThatThrownBy(() -> worker.execute(channelPacketMock))
                 .isInstanceOf(KnxEnumNotFoundException.class);
@@ -126,15 +123,12 @@ class SocketWorkerTest {
         final var worker = new SocketWorker(knxClientMock);
         worker.execute(channelPacketMock);
 
-        final var argCaptor = ArgumentCaptor.forClass(ByteBuffer.class);
-        verify(channelPacketMock.getChannel(), timeout(5000).times(2)).write(argCaptor.capture());
-
-        assertThat(argCaptor.getAllValues().stream().map(ByteBuffer::array)
-                .map(a -> ResponseBody.of(Arrays.copyOfRange(a, 3, a.length)))) // first three bytes are "header"
-                .containsExactly(
+        verifyChannelPackets(channelPacketMock,
+                List.of(
                         ResponseBody.of(false, Status.SUCCESS),
                         ResponseBody.of(true, Status.SUCCESS, "4711K")
-                );
+                )
+        );
     }
 
     @Test
@@ -150,7 +144,9 @@ class SocketWorkerTest {
         final var worker = new SocketWorker(knxClientMock);
         worker.execute(channelPacketMock);
 
-        verify(channelPacketMock.getChannel(), timeout(5000)).write(any(ByteBuffer.class));
+        verifyChannelPackets(channelPacketMock, List.of(
+                ResponseBody.of(true, Status.ERROR_REQUEST))
+        );
     }
 
     @Test
@@ -159,13 +155,28 @@ class SocketWorkerTest {
         final var channelPacketMock = createChannelPacketMock(
                 Helper.createProtocolV1Packet(Action.READ_REQUEST, "1/2/3", "7.600", null)
         );
-        final var channelMock = channelPacketMock.getChannel();
-        when(channelMock.isConnected()).thenReturn(false); // HERE: not connected!
+        when(channelPacketMock.getChannel().isConnected()).thenReturn(false); // HERE: not connected!
 
         final var worker = new SocketWorker(createKnxClientMock());
         worker.execute(channelPacketMock);
 
-        verify(channelMock, never()).write(any(ByteBuffer.class));
+        verifyNoChannelPackets(channelPacketMock);
+    }
+
+    @Test
+    @DisplayName("#execute(ChannelPacket) - READ REQUEST - No response from KNX Router")
+    void test_execute_ReadRequest_NoReadResponseFromKnx() throws IOException {
+        final var channelPacketMock = createChannelPacketMock(
+                Helper.createProtocolV1Packet(Action.READ_REQUEST, "1/2/3", "7.600", null)
+        );
+
+        final var worker = new SocketWorker(createKnxClientMock());
+        worker.execute(channelPacketMock); // should be fine, we silently ignore I/O
+
+        verifyChannelPackets(channelPacketMock, List.of(
+                ResponseBody.of(false, Status.SUCCESS),
+                ResponseBody.of(true, Status.ERROR_TIMEOUT, "Could not get read data for group address: 1/2/3")
+        ));
     }
 
     @Test
@@ -191,14 +202,9 @@ class SocketWorkerTest {
         final var worker = new SocketWorker(createKnxClientMock());
         worker.execute(channelPacketMock);
 
-        final var argCaptor = ArgumentCaptor.forClass(ByteBuffer.class);
-        verify(channelPacketMock.getChannel(), timeout(5000)).write(argCaptor.capture());
-
-        assertThat(argCaptor.getAllValues().stream().map(ByteBuffer::array)
-                .map(a -> ResponseBody.of(Arrays.copyOfRange(a, 3, a.length)))) // first three bytes are "header"
-                .containsExactly(
-                        ResponseBody.of(true, Status.SUCCESS)
-                );
+        verifyChannelPackets(channelPacketMock, List.of(
+                ResponseBody.of(true, Status.SUCCESS)
+        ));
     }
 
     @Test
@@ -211,14 +217,9 @@ class SocketWorkerTest {
         final var worker = new SocketWorker(createKnxClientMock());
         worker.execute(channelPacketMock);
 
-        final var argCaptor = ArgumentCaptor.forClass(ByteBuffer.class);
-        verify(channelPacketMock.getChannel(), timeout(5000)).write(argCaptor.capture());
-
-        assertThat(argCaptor.getAllValues().stream().map(ByteBuffer::array)
-                .map(a -> ResponseBody.of(Arrays.copyOfRange(a, 3, a.length)))) // first three bytes are "header"
-                .containsExactly(
-                        ResponseBody.of(true, Status.ERROR_INCOMPATIBLE_DATA_POINT_TYPE,
-                                "I could not understand value for group address '1/2/3' and data point type '1.001': [foobar]")
-                );
+        verifyChannelPackets(channelPacketMock, List.of(
+                ResponseBody.of(true, Status.ERROR_INCOMPATIBLE_DATA_POINT_TYPE,
+                        "I could not understand value for group address '1/2/3' and data point type '1.001': [foobar]")
+        ));
     }
 }
