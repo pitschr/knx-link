@@ -92,20 +92,21 @@ have KNX Link Server installed and running.*
 
 The KNX Link Client is implemented in [Rust](https://www.rust-lang.org/) to allow a very quick cold-start 
 and communication with the KNX Link Server. The biggest advantage is that no runtime (e.g. Java JDK) is 
-required which allows to run the application as a native. The pre-build executables can be found on the
-[release page](https://github.com/pitschr/knx-link/releases). Just download it and make sure that the file is executable.
+required which runs the application natively. The pre-build executables can be found on the
+[release page](https://github.com/pitschr/knx-link/releases). Just download it and save it as `knx-link-client` 
+and make sure that the file is executable.
 
 Reminder: If you are requesting the KNX Link Server from another machine, please make sure that the IP address of the
 machine list is white-listed on the KNX Link Server, otherwise your packets won't be accepted by the KNX Link Server
 for security reasons. See `server.allowed.addresses` setting of KNX Link Server.
 
-The KNX Link Client has two parameters which are globally available for all sub-commands. Each sub-command
-may have their own parameters.
+The KNX Link Client has following parameters which are globally available for all sub-commands. Each sub-command
+ have their own parameters.
 
 | Parameter                 | Default&nbsp;Value                 | Description |
 | ------------------------- | ---------------------------------- | ----------- |
-| `-h` or `--host`          | `127.0.0.1` (localhost)            | The IP Address where the KNX Link Server is running |
-| `-p` or `--port`          | `3672`                             | The port of the KNX Link Server is listening |
+| `-h`<br>`--host`          | `127.0.0.1` (localhost)            | The IP Address where the KNX Link Server is running |
+| `-p`<br>`--port`          | `3672`                             | The port of the KNX Link Server is listening |
 
 ### Read Sub-Command
 
@@ -113,8 +114,8 @@ The **read** sub-command to send a **read request** packet to KNX Link Server
 
 | Parameter                     | Description |
 | ----------------------------- | ----------- |
-| `-g` or `--group_address`     | The KNX group address that should receive the read request.<br><br>Supported formats are<br>**Three-Level:** Main, Middle and Sub (Range: `0/0/1 - 31/7/255`),<br>**Two-Level:** Main and Sub (Range: `0/1 - 31/2047`) and<br>**Free-Level:** Address (Range: `1 - 65535`) |
-| `-d` or `--data_point_type`   | The KNX data point type that you are requesting for.<br><br>Supported formats are `#`, `#.#`, `dpt-#` and `dpst-#-#`.<br>**Examples for 'Switch' Data Point Type:** `1`, `1.1`, `1.001`, `dpt-1`, `dpst-1-1`<br>**Examples for 'Date' Data Point Type:** `11`, `11.1`, `11.001`, `dpt-11`, `dpst-11-1` |
+| `-g`<br>`--group_address`     | The KNX group address that should receive the read request.<br><br>Supported formats are<br>**Three-Level:** Main, Middle and Sub (Range: `0/0/1 - 31/7/255`),<br>**Two-Level:** Main and Sub (Range: `0/1 - 31/2047`) and<br>**Free-Level:** Address (Range: `1 - 65535`) |
+| `-d`<br>`--data_point_type`   | The KNX data point type that you are requesting for.<br><br>Supported formats are `#`, `#.#`, `dpt-#` and `dpst-#-#`.<br>**Examples for 'Switch' Data Point Type:**<br>`1`, `1.1`, `1.001`, `dpt-1`, `dpst-1-1`<br>**Examples for 'Date' Data Point Type:**<br>`11`, `11.1`, `11.001`, `dpt-11`, `dpst-11-1` |
 
 Given examples requests the KNX Group Address `1/2/113` (which has a READ-Flag) the status of e.g. lamp. With given
 data point type `1.001` we may either get `On` or `Off`.
@@ -129,9 +130,9 @@ The **write** sub-command to send a **write request** packet to KNX Link Server
 
 | Parameter                     | Description |
 | ----------------------------- | ----------- |
-| `-g` or `--group_address`     | The KNX group address that should receive the read request.<br><br>Supported formats are<br>**Three-Level:** Main, Middle and Sub (Range: `0/0/1 - 31/7/255`),<br>**Two-Level:** Main and Sub (Range: `0/1 - 31/2047`) and<br>**Free-Level:** Address (Range: `1 - 65535`) |
-| `-d` or `--data_point_type`   | The KNX data point type that you are requesting for.<br><br>Supported formats are `#`, `#.#`, `dpt-#` and `dpst-#-#`.<br>**Examples for 'Switch' Data Point Type:** `1`, `1.1`, `1.001`, `dpt-1`, `dpst-1-1`<br>**Examples for 'Date' Data Point Type:** `11`, `11.1`, `11.001`, `dpt-11`, `dpst-11-1` |
-| `-v` or `--value`             | The value you want to send to KNX Link Server.<br><br>The supported formats depends on the data point type you selected<br>**Examples for DPT-1:** `on`, `off`, `true`, `false`, `1`, `0`<br>**Examples for DPT-3:** `stop`, `"controlled stop"`<br>**Examples for DPT-5:**  `1`, `10`, `20`<br>**Examples for DPT-9:** `1.23`, `123.456`<br>**Examples for DPT-10:** `00:00:00`, `12:34:56`<br>**Examples for DPT-11:** `2000-01-02`, `2050-03-04`<br>**Examples for DPT-13:** `1234`, `-1234`<br>**Examples for DPT-16:** `"Hello World"`<br> |
+| `-g`<br>`--group_address`     | The KNX group address that should receive the read request.<br><br>Supported formats are<br>**Three-Level:** Main, Middle and Sub (Range: `0/0/1 - 31/7/255`),<br>**Two-Level:** Main and Sub (Range: `0/1 - 31/2047`) and<br>**Free-Level:** Address (Range: `1 - 65535`) |
+| `-d`<br>`--data_point_type`   | The KNX data point type that you are requesting for.<br><br>Supported formats are `#`, `#.#`, `dpt-#` and `dpst-#-#`.<br>**Examples for 'Switch' Data Point Type:** `1`, `1.1`, `1.001`, `dpt-1`, `dpst-1-1`<br>**Examples for 'Date' Data Point Type:** `11`, `11.1`, `11.001`, `dpt-11`, `dpst-11-1` |
+| `-v`<br>`--value`             | The value you want to send to KNX Link Server.<br><br>The supported formats depends on the data point type you selected<br>**Examples for DPT-1:** `on`, `off`, `true`, `false`, `1`, `0`<br>**Examples for DPT-3:** `stop`, `"controlled stop"`<br>**Examples for DPT-5:**  `1`, `10`, `20`<br>**Examples for DPT-9:** `1.23`, `123.456`<br>**Examples for DPT-10:** `00:00:00`, `12:34:56`<br>**Examples for DPT-11:** `2000-01-02`, `2050-03-04`<br>**Examples for DPT-13:** `1234`, `-1234`<br>**Examples for DPT-16:** `"Hello World"`<br> |
 
 The example sets the lamp to `On` for given KNX Group Address `1/2/100`. Based on the data point type `1.001`
 which stands for *Switch* which is a boolean representation the KNX know that `on` is meant to switch on the 
