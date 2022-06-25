@@ -58,7 +58,7 @@ jobs:
         with:
           command: build
           use-cross: true
-          args: --release --target x86_64-unknown-linux-gnu
+          args: --release --target x86_64-unknown-linux-gnu --manifest-path client/Cargo.toml
 
       - name: Upload KNX Link Client binary for Linux/GNU
         uses: svenstaro/upload-release-action@v2
