@@ -100,8 +100,34 @@ Reminder: If you are requesting the KNX Link Server from another machine, please
 machine list is white-listed on the KNX Link Server, otherwise your packets won't be accepted by the KNX Link Server
 for security reasons. See `server.allowed.addresses` setting of KNX Link Server.
 
-The KNX Link Client has following parameters which are globally available for all sub-commands. Each sub-command
- have their own parameters.
+### How to install?
+
+#### For Linux, MacOs, Cygwin, MinGw
+Execute the bash script below. It will check if `curl` is installed and detect which
+operating system you are using inclusive checking of the GCLIB version and it will 
+download the latest KNX Link Client artifact.
+
+```bash
+bash <(curl -s https://raw.githubusercontent.com/pitschr/knx-link/main/install-client.sh)
+```
+
+#### For Windows
+
+Go to [release page](https://github.com/pitschr/knx-link/releases) and download the 
+latest version of `knx-link-client-windows.exe`. After downloading you can rename 
+the file to e.g. `knx-link-client.exe` and use it in your Windows Command Prompt (CMD) 
+or in your powershell.
+
+### How to use it?
+If you are struggling, try out one of those commands
+* General Help: * `./knx-link-client help`
+* Help about **read** sub-command: `./knx-link-client help read`
+* Help about **write** sub-command: `./knx-link-client help write`
+
+### Global Arguments
+
+The KNX Link Client has following parameters which are available for all sub-commands. Each sub-command
+ have their own parameters which are described in their own sections.
 
 | Parameter                 | Default&nbsp;Value                 | Description |
 | ------------------------- | ---------------------------------- | ----------- |
