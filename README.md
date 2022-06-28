@@ -92,15 +92,12 @@ have KNX Link Server installed and running.*
 
 The KNX Link Client is implemented in [Rust](https://www.rust-lang.org/) to allow a very quick cold-start 
 and communication with the KNX Link Server. The biggest advantage is that no runtime (e.g. Java JDK) is 
-required which runs the application natively. The pre-build executables can be found on the
-[release page](https://github.com/pitschr/knx-link/releases). Just download it and save it as `knx-link-client` 
-and make sure that the file is executable.
-
-Reminder: If you are requesting the KNX Link Server from another machine, please make sure that the IP address of the
-machine list is white-listed on the KNX Link Server, otherwise your packets won't be accepted by the KNX Link Server
-for security reasons. See `server.allowed.addresses` setting of KNX Link Server.
+required which runs the application natively.
 
 ### How to install?
+
+The pre-build executables can be found on the [release page](https://github.com/pitschr/knx-link/releases). 
+Just download the latest version of `knx-link-client` and make sure that the file is executable.
 
 #### For Linux, MacOs, Cygwin, MinGw
 Execute the bash script below. It will check if `curl` is installed and detect which
@@ -123,6 +120,10 @@ If you are struggling, try out one of those commands
 * General Help: * `./knx-link-client help`
 * Help about **read** sub-command: `./knx-link-client help read`
 * Help about **write** sub-command: `./knx-link-client help write`
+
+Reminder: If you are requesting the KNX Link Server from another machine, please make sure that the IP address of the
+machine list is white-listed on the KNX Link Server, otherwise your packets won't be accepted by the KNX Link Server
+for security reasons. See `server.allowed.addresses` setting of KNX Link Server.
 
 ### Global Arguments
 
@@ -166,3 +167,73 @@ lamp. Alternatively to `on` you can use the `true` or `1` to switch on the lamp.
 ```
 knx-link-client write -g 1/2/110 -d 1.001 -v on
 ```
+
+### Advanced: Command Alias (for Linux and MacOS)
+
+If you do not want to enter the IP address of the KNX Link server everytime like 
+`./knx-link-client -h 1.2.3.4 read ...` or/and `./knx-link-client -h 1.2.3.4 write ...` 
+then you may add a command alias in your profile file which shortens the command 
+to `knx read ...` and `knx write ...`:
+
+```bash
+alias knx='/path/to/knx-link-client -h 1.2.3.4'
+```
+
+### Advanced: Functions (for Linux and MacOS)
+
+In case you are working with same KNX Group Addresses and frequently you can 
+implement a function wrapper which shortens the command further or to meet
+your needs. 
+
+Example:
+* `r` taken as short alias for `read`
+* `w` taken as short alias for `write`
+* In ETS defined KNX Group Addresses
+  * Kitchen: read address (1/2/113), write address (1/2/110)
+  * Garage: read address (1/1/33), write address (1/1/30)
+
+```bash
+#!/bin/bash
+KNXLINKCLIENT=/path/to/knx-link-client
+
+declare -A READ_GROUPS
+READ_GROUPS[kitchen]="1/2/113"
+READ_GROUPS[garage]="1/1/33"
+
+declare -A WRITE_GROUPS
+WRITE_GROUPS[kitchen]="1/2/110"
+WRITE_GROUPS[garage]="1/1/30"
+
+knx-lamp() {
+  GROUP_ADDRESS=""
+  if [[ "$1" == "r" ]]; then
+    GROUP_ADDRESS="${READ_GROUPS[$2]}"
+    if [[ -z "$GROUP_ADDRESS" ]]; then
+      echo "Unsupported room"
+      return
+    fi
+    echo "Read Request to '$2': $GROUP_ADDRESS"
+    "$KNXLINKCLIENT" read -g "$GROUP_ADDRESS" -d 1
+  elif [[ "$1" == "w" ]]; then
+    GROUP_ADDRESS="${WRITE_GROUPS[$2]}"
+    if [[ -z "$GROUP_ADDRESS" ]]; then
+      echo "Unsupported room"
+      return
+    fi
+    VALUE="$3"
+    if [[ -z "$VALUE" ]]; then
+      echo "No value provided?"
+      return
+    fi
+    echo "Write Request to '$2' with value '$VALUE': $GROUP_ADDRESS"
+    "$KNXLINKCLIENT" write -g "$GROUP_ADDRESS" -d 1 -v "$VALUE"
+  else
+    echo "Unknown command"
+  fi
+}
+```
+
+Given example above, the usage would be then like: 
+* `knx-lamp r garage` to fetch lamp status from room 'garage'
+* `knx-lamp w kitchen on` to switch lamp on in room 'kitchen'
+* `knx-lamp w kitchen off` to switch lamp off in room 'kitchen'
